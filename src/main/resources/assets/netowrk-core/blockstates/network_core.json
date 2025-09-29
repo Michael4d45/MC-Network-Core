@@ -1,0 +1,96 @@
+{
+  "variants": {
+    "facing=north,receive_active=false,transmit_active=false": {
+      "model": "network-core:block/network_core"
+    },
+    "facing=north,receive_active=true,transmit_active=false": {
+      "model": "network-core:block/network_core_receive_powered"
+    },
+    "facing=north,receive_active=false,transmit_active=true": {
+      "model": "network-core:block/network_core_transmit_powered"
+    },
+    "facing=north,receive_active=true,transmit_active=true": {
+      "model": "network-core:block/network_core_receive_transmit_powered"
+    },
+    "facing=south,receive_active=false,transmit_active=false": {
+      "model": "network-core:block/network_core",
+      "y": 180
+    },
+    "facing=south,receive_active=true,transmit_active=false": {
+      "model": "network-core:block/network_core_receive_powered",
+      "y": 180
+    },
+    "facing=south,receive_active=false,transmit_active=true": {
+      "model": "network-core:block/network_core_transmit_powered",
+      "y": 180
+    },
+    "facing=south,receive_active=true,transmit_active=true": {
+      "model": "network-core:block/network_core_receive_transmit_powered",
+      "y": 180
+    },
+    "facing=west,receive_active=false,transmit_active=false": {
+      "model": "network-core:block/network_core",
+      "y": 270
+    },
+    "facing=west,receive_active=true,transmit_active=false": {
+      "model": "network-core:block/network_core_receive_powered",
+      "y": 270
+    },
+    "facing=west,receive_active=false,transmit_active=true": {
+      "model": "network-core:block/network_core_transmit_powered",
+      "y": 270
+    },
+    "facing=west,receive_active=true,transmit_active=true": {
+      "model": "network-core:block/network_core_receive_transmit_powered",
+      "y": 270
+    },
+    "facing=east,receive_active=false,transmit_active=false": {
+      "model": "network-core:block/network_core",
+      "y": 90
+    },
+    "facing=east,receive_active=true,transmit_active=false": {
+      "model": "network-core:block/network_core_receive_powered",
+      "y": 90
+    },
+    "facing=east,receive_active=false,transmit_active=true": {
+      "model": "network-core:block/network_core_transmit_powered",
+      "y": 90
+    },
+    "facing=east,receive_active=true,transmit_active=true": {
+      "model": "network-core:block/network_core_receive_transmit_powered",
+      "y": 90
+    },
+    "facing=up,receive_active=false,transmit_active=false": {
+      "model": "network-core:block/network_core",
+      "x": 270
+    },
+    "facing=up,receive_active=true,transmit_active=false": {
+      "model": "network-core:block/network_core_receive_powered",
+      "x": 270
+    },
+    "facing=up,receive_active=false,transmit_active=true": {
+      "model": "network-core:block/network_core_transmit_powered",
+      "x": 270
+    },
+    "facing=up,receive_active=true,transmit_active=true": {
+      "model": "network-core:block/network_core_receive_transmit_powered",
+      "x": 270
+    },
+    "facing=down,receive_active=false,transmit_active=false": {
+      "model": "network-core:block/network_core",
+      "x": 90
+    },
+    "facing=down,receive_active=true,transmit_active=false": {
+      "model": "network-core:block/network_core_receive_powered",
+      "x": 90
+    },
+    "facing=down,receive_active=false,transmit_active=true": {
+      "model": "network-core:block/network_core_transmit_powered",
+      "x": 90
+    },
+    "facing=down,receive_active=true,transmit_active=true": {
+      "model": "network-core:block/network_core_receive_transmit_powered",
+      "x": 90
+    }
+  }
+}

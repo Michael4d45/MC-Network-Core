@@ -1,0 +1,13 @@
+{
+  "block.network-core.network_core": "Network Core",
+  "screen.network-core.network_core.port_label": "Port",
+  "screen.network-core.network_core.symbol_period_label": "Symbol Period (ticks)",
+  "screen.network-core.network_core.port": "Port",
+  "screen.network-core.network_core.symbol_period": "Symbol Period",
+  "screen.network-core.network_core.apply": "Apply",
+  "screen.network-core.network_core.reset": "Reset",
+  "screen.network-core.network_core.feedback_empty": "Enter a value between %s and %s.",
+  "screen.network-core.network_core.feedback_range": "Value must be between %s and %s.",
+  "screen.network-core.network_core.feedback_invalid": "Only digits are allowed.",
+  "screen.network-core.network_core.help": "Configure which network port this core listens on."
+}
