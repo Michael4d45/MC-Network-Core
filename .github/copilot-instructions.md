@@ -1,6 +1,15 @@
 # Fabric Minecraft Mod Development Guide
 
 Never update gradle.properties.
+According to https://fabricmc.net/develop, the latest versions for 1.21.7 are:
+
+minecraft_version=1.21.7
+yarn_mappings=1.21.7+build.8
+loader_version=0.17.2
+loom_version=1.11-SNAPSHOT
+
+# Fabric API
+fabric_version=0.129.0+1.21.7
 
 ## Resources Checklist
 
