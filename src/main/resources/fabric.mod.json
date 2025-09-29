@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
-  "id": "netowrk-core",
+  "id": "network-core",
   "version": "${version}",
-  "name": "Netowrk Core",
+  "name": "Network Core",
   "description": "This is an example description! Tell everyone what your mod is about!",
   "authors": ["Me!"],
   "contact": {
@@ -10,11 +10,11 @@
     "sources": "https://github.com/FabricMC/fabric-example-mod"
   },
   "license": "CC0-1.0",
-  "icon": "assets/netowrk-core/icon.png",
+  "icon": "assets/network-core/icon.png",
   "environment": "*",
   "entrypoints": {
-    "main": ["io.github.michael4d45.NetowrkCore"],
-    "client": ["io.github.michael4d45.NetowrkCoreClient"]
+    "main": ["io.github.michael4d45.NetworkCore"],
+    "client": ["io.github.michael4d45.NetworkCoreClient"]
   },
   "depends": {
     "fabricloader": ">=0.17.2",
