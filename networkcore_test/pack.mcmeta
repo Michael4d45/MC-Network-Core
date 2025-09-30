@@ -1,0 +1,6 @@
+{
+  "pack": {
+    "pack_format": 81,
+    "description": "Network Core protocol test harness (frames, control ops, error cases)"
+  }
+}

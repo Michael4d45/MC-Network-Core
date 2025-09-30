@@ -33,6 +33,9 @@ public class NetworkCoreEntity extends BlockEntity implements NamedScreenHandler
   /** Runtime state (not persisted). */
   private final CoreRuntime runtime = new CoreRuntime();
 
+  /** Paused state for testing. */
+  private boolean paused = false;
+
   public NetworkCoreEntity(BlockPos pos, BlockState state) {
     super(ModBlockEntities.NETWORK_CORE, pos, state);
   }
@@ -62,6 +65,18 @@ public class NetworkCoreEntity extends BlockEntity implements NamedScreenHandler
       this.symbolPeriodTicks = clamped;
       markDirty();
     }
+  }
+
+  public boolean isPaused() {
+    return paused;
+  }
+
+  public void setPaused(boolean paused) {
+    this.paused = paused;
+  }
+
+  public CoreRuntime getRuntime() {
+    return runtime;
   }
 
   @Override
@@ -122,6 +137,10 @@ public class NetworkCoreEntity extends BlockEntity implements NamedScreenHandler
   public static void tick(World world, BlockPos pos, BlockState state, NetworkCoreEntity be) {
     if (!(world instanceof ServerWorld serverWorld)) {
       return;
+    }
+
+    if (be.paused) {
+      return; // Skip processing when paused for testing
     }
 
     int period = be.getSymbolPeriodTicks();

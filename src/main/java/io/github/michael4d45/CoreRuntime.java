@@ -34,11 +34,13 @@ public class CoreRuntime {
           ingress.expectedLength,
           result.committedFrame != null);
     }
-    // framing error count removed for now; could add metrics collection later
-    switch (result.committedFrame) {
-      case DataFrame dataFrame -> Router.getInstance().sendFrame(dataFrame);
-      case ControlFrame controlFrame -> processControlFrame(controlFrame, be);
-      default -> {}
+    if (result.committedFrame != null) {
+      // framing error count removed for now; could add metrics collection later
+      switch (result.committedFrame) {
+        case DataFrame dataFrame -> Router.getInstance().sendFrame(dataFrame);
+        case ControlFrame controlFrame -> processControlFrame(controlFrame, be);
+        default -> {}
+      }
     }
   }
 
