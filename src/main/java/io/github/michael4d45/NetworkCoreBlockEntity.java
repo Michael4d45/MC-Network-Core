@@ -17,9 +17,13 @@ import org.jetbrains.annotations.Nullable;
 /** Minimal stub block entity. */
 public class NetworkCoreBlockEntity extends BlockEntity implements NamedScreenHandlerFactory {
   private static final String PORT_KEY = "Port";
+  private static final String SYMBOL_PERIOD_KEY = "SymbolPeriodTicks";
 
   /** Cached assigned network port (0 = unassigned). */
   private int port;
+
+  /** Symbol period in ticks (1-8, default 2). */
+  private int symbolPeriodTicks = 2;
 
   public NetworkCoreBlockEntity(BlockPos pos, BlockState state) {
     super(ModBlockEntities.NETWORK_CORE, pos, state);
@@ -36,17 +40,34 @@ public class NetworkCoreBlockEntity extends BlockEntity implements NamedScreenHa
     }
   }
 
+  public int getSymbolPeriodTicks() {
+    return symbolPeriodTicks;
+  }
+
+  public void setSymbolPeriodTicks(int symbolPeriodTicks) {
+    int clamped = Math.max(1, Math.min(8, symbolPeriodTicks));
+    if (this.symbolPeriodTicks != clamped) {
+      this.symbolPeriodTicks = clamped;
+      markDirty();
+    }
+  }
+
   @Override
   protected void readData(ReadView view) {
     int loaded = view.getOptionalInt(PORT_KEY).orElse(0);
-
     this.port = Math.max(0, Math.min(255, loaded));
+
+    int loadedPeriod = view.getOptionalInt(SYMBOL_PERIOD_KEY).orElse(2);
+    this.symbolPeriodTicks = Math.max(1, Math.min(8, loadedPeriod));
   }
 
   @Override
   protected void writeData(WriteView view) {
     if (port > 0) {
       view.putInt(PORT_KEY, port);
+    }
+    if (symbolPeriodTicks != 2) { // Only save if not default
+      view.putInt(SYMBOL_PERIOD_KEY, symbolPeriodTicks);
     }
   }
 
