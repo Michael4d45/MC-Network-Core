@@ -29,6 +29,7 @@ import org.jetbrains.annotations.Nullable;
 
 /** Network Core block. */
 public class NetworkCoreBlock extends BlockWithEntity {
+
   public static final EnumProperty<Direction> FACING = Properties.FACING;
   public static final IntProperty RECEIVE_POWERED = IntProperty.of("receive_powered", 0, 15);
   public static final IntProperty TRANSMIT_POWERED = IntProperty.of("transmit_powered", 0, 15);
@@ -109,7 +110,7 @@ public class NetworkCoreBlock extends BlockWithEntity {
       if (world instanceof ServerWorld serverWorld) {
         BlockEntity be = world.getBlockEntity(pos);
         if (be instanceof NetworkCoreEntity core) {
-          int assigned = PortManager.getInstance().requestPort(serverWorld, pos, 0);
+          int assigned = Router.getInstance().requestPort(serverWorld, pos, 0);
           NetworkCore.LOGGER.debug("Assigned port {} to Network Core at {}", assigned, pos);
           core.setPort(assigned);
         }
@@ -121,7 +122,7 @@ public class NetworkCoreBlock extends BlockWithEntity {
   @Override
   public void onStateReplaced(BlockState state, ServerWorld world, BlockPos pos, boolean moved) {
     if (!world.isClient) {
-      PortManager.getInstance().release(world, pos);
+      Router.getInstance().release(world, pos);
     }
     super.onStateReplaced(state, world, pos, moved);
   }
@@ -165,8 +166,7 @@ public class NetworkCoreBlock extends BlockWithEntity {
     boolean changed =
         updateLevelAndActiveIfNeeded(world, pos, state, RECEIVE_POWERED, RECEIVE_ACTIVE, powering);
     if (changed) {
-      Direction facing = state.get(FACING);
-      world.updateNeighbors(pos.offset(facing.getOpposite()), state.getBlock());
+      world.updateNeighbors(pos, state.getBlock());
     }
   }
 

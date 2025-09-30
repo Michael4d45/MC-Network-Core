@@ -30,7 +30,7 @@ public class NetworkCore implements ModInitializer {
   @Override
   public void onInitialize() {
     LOGGER.info("Initializing NetworkCore mod");
-    PortManager.init();
+    Router.init();
     // Block entity types
     ModBlockEntities.registerAll();
     // Register the block item

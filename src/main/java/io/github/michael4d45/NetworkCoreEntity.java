@@ -17,6 +17,7 @@ import org.jetbrains.annotations.Nullable;
 
 /** Minimal stub block entity. */
 public class NetworkCoreEntity extends BlockEntity implements NamedScreenHandlerFactory {
+
   private static final String PORT_KEY = "Port";
   private static final String SYMBOL_PERIOD_KEY = "SymbolPeriodTicks";
 
@@ -29,12 +30,19 @@ public class NetworkCoreEntity extends BlockEntity implements NamedScreenHandler
   /** Tick counter for symbol processing. */
   private int tickCounter = 0;
 
+  /** Runtime state (not persisted). */
+  private final CoreRuntime runtime = new CoreRuntime();
+
   public NetworkCoreEntity(BlockPos pos, BlockState state) {
     super(ModBlockEntities.NETWORK_CORE, pos, state);
   }
 
   public int getPort() {
     return port;
+  }
+
+  public int getWorldId() {
+    return Router.getWorldId((ServerWorld) this.world);
   }
 
   public void setPort(int port) {
@@ -79,13 +87,13 @@ public class NetworkCoreEntity extends BlockEntity implements NamedScreenHandler
   public void handleLoad() {
     if (this.world instanceof ServerWorld serverWorld) {
       if (port > 0) {
-        int assigned = PortManager.getInstance().registerExisting(serverWorld, pos, port);
+        int assigned = Router.getInstance().registerExisting(serverWorld, pos, port);
         if (assigned != port) {
           port = assigned; // adjust to resolved port
           markDirty();
         }
       } else {
-        int assigned = PortManager.getInstance().requestPort(serverWorld, pos, 0);
+        int assigned = Router.getInstance().requestPort(serverWorld, pos, 0);
         port = assigned;
         markDirty();
       }
@@ -95,7 +103,7 @@ public class NetworkCoreEntity extends BlockEntity implements NamedScreenHandler
   @Override
   public void markRemoved() {
     if (this.world instanceof ServerWorld serverWorld) {
-      PortManager.getInstance().release(serverWorld, pos);
+      Router.getInstance().release(serverWorld, pos);
     }
     super.markRemoved();
   }
@@ -112,25 +120,23 @@ public class NetworkCoreEntity extends BlockEntity implements NamedScreenHandler
   }
 
   public static void tick(World world, BlockPos pos, BlockState state, NetworkCoreEntity be) {
-    if (world.isClient) return;
+    if (!(world instanceof ServerWorld serverWorld)) {
+      return;
+    }
 
     int period = be.getSymbolPeriodTicks();
     be.tickCounter++;
     if (be.tickCounter >= period) {
-      // TODO: Get transmit power from block state
       int transmitPower = NetworkCoreBlock.getTransmitPower(state);
-      if (transmitPower > 0) {
-        NetworkCore.LOGGER.debug("Tick Network Core at {} with TX power {}", pos, transmitPower);
-      }
-      // TODO: Process transmission symbol
-      // processTxSymbol(transmitPower);
-      // // TODO: Process receive output
-      // processRxOutput();
-      // // TODO: Get receive power from runtime egress
-      // int receivePower = getRuntime().egress.lastOutputPower;
-      // // TODO: Update block state with receive powering
-      // setReceivePowering(receivePower);
+      be.runtime.processTxSymbol(serverWorld, be, transmitPower);
+      be.runtime.processRxOutput();
+      int receivePower = be.runtime.getLastOutputPower();
+      NetworkCoreBlock.setReceivePowering(serverWorld, pos, state, receivePower);
       be.tickCounter = 0;
     }
+  }
+
+  public void sendFrame(Frame frame) {
+    runtime.sendFrame(frame);
   }
 }

@@ -12,6 +12,8 @@ import net.minecraft.nbt.NbtCompound;
 import net.minecraft.nbt.NbtIo;
 import net.minecraft.nbt.NbtSizeTracker;
 import net.minecraft.registry.RegistryKey;
+import net.minecraft.registry.RegistryKeys;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.WorldSavePath;
@@ -19,37 +21,72 @@ import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.World;
 
 /** Manages unique port assignments per world. */
-public final class PortManager {
+public final class Router {
+
   private static final int MIN_PORT = 1;
   private static final int MAX_PORT = 255;
-  private static final PortManager INSTANCE = new PortManager();
+  private static final Router INSTANCE = new Router();
+
+  private static MinecraftServer server;
+  private static final Map<Identifier, Integer> worldIds = new ConcurrentHashMap<>();
+  private static int nextWorldId = 0;
 
   private final Map<RegistryKey<World>, NetworkCorePortState> allocations =
       new ConcurrentHashMap<>();
 
-  private PortManager() {}
+  private Router() {}
 
   public static void init() {
     ServerLifecycleEvents.SERVER_STARTED.register(
         server -> {
+          Router.server = server;
+          loadWorldIds();
           for (ServerWorld world : server.getWorlds()) {
-            NetworkCore.LOGGER.info(
-                "Requesting port load for world {}", world.getRegistryKey().getValue());
-            PortManager.loadState(world);
+            Identifier id = world.getRegistryKey().getValue();
+            worldIds.computeIfAbsent(id, k -> nextWorldId++);
+            NetworkCore.LOGGER.info("Assigned world ID {} to world {}", worldIds.get(id), id);
+            Router.loadState(world);
           }
         });
     ServerLifecycleEvents.SERVER_STOPPING.register(
         server -> {
+          saveWorldIds();
           for (ServerWorld world : server.getWorlds()) {
             NetworkCore.LOGGER.info(
                 "Requesting port save for world {}", world.getRegistryKey().getValue());
-            PortManager.saveState(world);
+            Router.saveState(world);
           }
         });
   }
 
-  public static PortManager getInstance() {
+  public static Router getInstance() {
     return INSTANCE;
+  }
+
+  private static ServerWorld getWorldById(int id) {
+    for (var entry : worldIds.entrySet()) {
+      if (entry.getValue() == id) {
+        RegistryKey<World> key = RegistryKey.of(RegistryKeys.WORLD, entry.getKey());
+        return server.getWorld(key);
+      }
+    }
+    return null;
+  }
+
+  public static int getWorldId(ServerWorld world) {
+    return worldIds.getOrDefault(world.getRegistryKey().getValue(), -1);
+  }
+
+  public void sendFrame(Frame frame) {
+    ServerWorld world = getWorldById(frame.destinationWorld);
+    if (world == null) {
+      NetworkCore.LOGGER.warn("Cannot send frame, invalid world ID: " + frame.destinationWorld);
+      return;
+    }
+    NetworkCoreEntity core = getBlockEntityByPort(world, frame.destinationPort);
+    if (core != null) {
+      core.sendFrame(frame);
+    }
   }
 
   public int registerExisting(ServerWorld world, BlockPos pos, int desiredPort) {
@@ -89,7 +126,7 @@ public final class PortManager {
   }
 
   public static void saveState(ServerWorld world) {
-    NetworkCorePortState state = PortManager.getInstance().allocations.get(world.getRegistryKey());
+    NetworkCorePortState state = Router.getInstance().allocations.get(world.getRegistryKey());
     if (state != null) {
       Path path = getStateFile(world);
       try {
@@ -114,7 +151,7 @@ public final class PortManager {
       try {
         NbtCompound nbt = NbtIo.readCompressed(path, NbtSizeTracker.ofUnlimitedBytes());
         NetworkCorePortState state = NetworkCorePortState.fromNbt(nbt);
-        PortManager.getInstance().allocations.put(world.getRegistryKey(), state);
+        Router.getInstance().allocations.put(world.getRegistryKey(), state);
         if (migratedFromLegacy) {
           saveState(world);
           try {
@@ -147,5 +184,36 @@ public final class PortManager {
         .getSavePath(WorldSavePath.ROOT)
         .resolve("data")
         .resolve("network_core_ports.nbt");
+  }
+
+  private static void loadWorldIds() {
+    Path path =
+        server.getSavePath(WorldSavePath.ROOT).resolve("data").resolve("network_core_worlds.nbt");
+    if (Files.exists(path)) {
+      try {
+        NbtCompound nbt = NbtIo.readCompressed(path, NbtSizeTracker.ofUnlimitedBytes());
+        for (String key : nbt.getKeys()) {
+          nbt.getInt(key).ifPresent(id -> worldIds.put(Identifier.of(key), id));
+        }
+        nextWorldId = worldIds.values().stream().mapToInt(i -> i).max().orElse(-1) + 1;
+      } catch (IOException e) {
+        NetworkCore.LOGGER.error("Failed to load world ids", e);
+      }
+    }
+  }
+
+  private static void saveWorldIds() {
+    Path path =
+        server.getSavePath(WorldSavePath.ROOT).resolve("data").resolve("network_core_worlds.nbt");
+    try {
+      Files.createDirectories(path.getParent());
+      NbtCompound nbt = new NbtCompound();
+      for (var entry : worldIds.entrySet()) {
+        nbt.putInt(entry.getKey().toString(), entry.getValue());
+      }
+      NbtIo.writeCompressed(nbt, path);
+    } catch (IOException e) {
+      NetworkCore.LOGGER.error("Failed to save world ids", e);
+    }
   }
 }
