@@ -4,10 +4,11 @@ import net.minecraft.block.BlockState;
 import net.minecraft.block.entity.BlockEntity;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.entity.player.PlayerInventory;
-import net.minecraft.nbt.NbtCompound;
 import net.minecraft.screen.NamedScreenHandlerFactory;
 import net.minecraft.screen.ScreenHandler;
 import net.minecraft.server.world.ServerWorld;
+import net.minecraft.storage.ReadView;
+import net.minecraft.storage.WriteView;
 import net.minecraft.text.Text;
 import net.minecraft.util.math.BlockPos;
 
@@ -35,19 +36,17 @@ public class NetworkCoreBlockEntity extends BlockEntity implements NamedScreenHa
     }
   }
 
-  // Newer 1.21.6+ lifecycle methods
-  public void readData(NbtCompound nbt) {
-    if (nbt.contains(PORT_KEY)) {
-      int loaded = nbt.getInt(PORT_KEY).orElse(0);
-      if (loaded < 0) loaded = 0;
-      if (loaded > 255) loaded = 255;
-      this.port = loaded;
-    }
+  @Override
+  protected void readData(ReadView view) {
+    int loaded = view.getOptionalInt(PORT_KEY).orElse(0);
+
+    this.port = Math.max(0, Math.min(255, loaded));
   }
 
-  protected void writeData(NbtCompound nbt) {
+  @Override
+  protected void writeData(WriteView view) {
     if (port > 0) {
-      nbt.putInt(PORT_KEY, port);
+      view.putInt(PORT_KEY, port);
     }
   }
 
