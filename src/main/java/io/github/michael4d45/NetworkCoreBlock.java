@@ -109,6 +109,14 @@ public class NetworkCoreBlock extends BlockWithEntity {
     if (!world.isClient) {
       updateTransmitPowering(world, pos, state);
       NetworkCoreBackend.getInstance().register(world, pos);
+      if (world instanceof ServerWorld serverWorld) {
+        BlockEntity be = world.getBlockEntity(pos);
+        if (be instanceof NetworkCoreBlockEntity core) {
+          int assigned = PortManager.getInstance().requestPort(serverWorld, pos, 0);
+          NetworkCore.LOGGER.debug("Assigned port {} to Network Core at {}", assigned, pos);
+          core.setPort(assigned);
+        }
+      }
     }
     super.onPlaced(world, pos, state, placer, itemStack);
   }
@@ -116,6 +124,7 @@ public class NetworkCoreBlock extends BlockWithEntity {
   @Override
   public void onStateReplaced(BlockState state, ServerWorld world, BlockPos pos, boolean moved) {
     if (!world.isClient) {
+      PortManager.getInstance().release(world, pos);
       NetworkCoreBackend.getInstance().unregister(world, pos);
     }
     super.onStateReplaced(state, world, pos, moved);

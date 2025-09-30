@@ -1,5 +1,6 @@
 {
   "block.network-core.network_core": "Network Core",
+  "item.network-core.network_core": "Network Core",
   "screen.network-core.network_core.port_label": "Port",
   "screen.network-core.network_core.symbol_period_label": "Symbol Period (ticks)",
   "screen.network-core.network_core.port": "Port",

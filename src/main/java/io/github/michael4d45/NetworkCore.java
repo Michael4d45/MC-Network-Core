@@ -1,12 +1,11 @@
 package io.github.michael4d45;
 
 import net.fabricmc.api.ModInitializer;
+import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.fabric.api.itemgroup.v1.ItemGroupEvents;
-import net.fabricmc.fabric.api.object.builder.v1.block.entity.FabricBlockEntityTypeBuilder;
 
 import net.minecraft.block.AbstractBlock;
 import net.minecraft.block.Block;
-import net.minecraft.block.entity.BlockEntityType;
 import net.minecraft.item.BlockItem;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemGroups;
@@ -14,31 +13,45 @@ import net.minecraft.registry.Registries;
 import net.minecraft.registry.Registry;
 import net.minecraft.registry.RegistryKey;
 import net.minecraft.registry.RegistryKeys;
+import net.minecraft.server.world.ServerWorld;
 import net.minecraft.util.Identifier;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 public class NetworkCore implements ModInitializer {
+
   public static final String MOD_ID = "network-core";
+  public static final Logger LOGGER = LoggerFactory.getLogger(MOD_ID);
   public static final Block NETWORK_CORE_BLOCK =
       registerBlock(
           "network_core",
           NetworkCoreBlock::new,
           AbstractBlock.Settings.create().strength(3.0f, 6.0f).requiresTool());
 
-  // Block entity type registration
-  public static BlockEntityType<NetworkCoreBlockEntity> NETWORK_CORE_BLOCK_ENTITY_TYPE;
-
   @Override
   public void onInitialize() {
+    LOGGER.info("Initializing NetworkCore mod");
+    ServerLifecycleEvents.SERVER_STARTED.register(
+        server -> {
+          for (ServerWorld world : server.getWorlds()) {
+            LOGGER.info("Requesting port load for world {}", world.getRegistryKey().getValue());
+            PortManager.loadState(world);
+          }
+        });
+    ServerLifecycleEvents.SERVER_STOPPING.register(
+        server -> {
+          for (ServerWorld world : server.getWorlds()) {
+            LOGGER.info("Requesting port save for world {}", world.getRegistryKey().getValue());
+            PortManager.saveState(world);
+          }
+        });
+
     // Register the block item
     registerBlockItem("network_core", NETWORK_CORE_BLOCK);
 
-    // Register block entity type (builder provided by Fabric API)
-    NETWORK_CORE_BLOCK_ENTITY_TYPE =
-        Registry.register(
-            Registries.BLOCK_ENTITY_TYPE,
-            Identifier.of(MOD_ID, "network_core"),
-            FabricBlockEntityTypeBuilder.create(NetworkCoreBlockEntity::new, NETWORK_CORE_BLOCK)
-                .build());
+    // Block entity types
+    ModBlockEntities.registerAll();
 
     // Add to Redstone creative tab
     ItemGroupEvents.modifyEntriesEvent(ItemGroups.REDSTONE)
@@ -48,6 +61,7 @@ public class NetworkCore implements ModInitializer {
             });
   }
 
+  // (Block entity registration now lives in ModBlockEntities again.)
   private static Block registerBlock(
       String name,
       java.util.function.Function<AbstractBlock.Settings, Block> blockFactory,
