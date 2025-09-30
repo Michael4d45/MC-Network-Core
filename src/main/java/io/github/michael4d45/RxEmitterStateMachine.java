@@ -35,21 +35,23 @@ public class RxEmitterStateMachine {
       Queue<Frame> rxRing) {
     switch (currentState) {
       case IDLE -> {
-          if (!rxRing.isEmpty()) {
-              Frame frame = rxRing.poll();
-              int[] symbols = frame.buildSymbols();
-              return new Result(State.OUTPUTTING, frame, symbols, symbols[0], 1);
-          } else {
-              return new Result(State.IDLE, null, null, 0, 0);
-          } }
+        if (!rxRing.isEmpty()) {
+          Frame frame = rxRing.poll();
+          int[] symbols = frame.buildSymbols();
+          return new Result(State.OUTPUTTING, frame, symbols, symbols[0], 1);
+        } else {
+          return new Result(State.IDLE, null, null, 0, 0);
+        }
+      }
       case OUTPUTTING -> {
-          if (currentSymbols == null || currentPosition >= currentSymbols.length) {
-              return new Result(State.IDLE, null, null, 0, 0);
-          } else {
-              int symbol = currentSymbols[currentPosition];
-              return new Result(
-                      State.OUTPUTTING, currentFrame, currentSymbols, symbol, currentPosition + 1);
-          } }
+        if (currentSymbols == null || currentPosition >= currentSymbols.length) {
+          return new Result(State.IDLE, null, null, 0, 0);
+        } else {
+          int symbol = currentSymbols[currentPosition];
+          return new Result(
+              State.OUTPUTTING, currentFrame, currentSymbols, symbol, currentPosition + 1);
+        }
+      }
     }
     return new Result(currentState, currentFrame, currentSymbols, 0, currentPosition);
   }

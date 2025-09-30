@@ -125,7 +125,35 @@ public class CoreRuntime {
   }
 
   public void processRxOutput() {
-    // TODO: Implement RX output processing
+    RxEmitterStateMachine.Result result =
+        RxEmitterStateMachine.process(
+            egress.state, egress.currentFrame, egress.symbols, egress.position, rxQueue);
+    if (egress.state != result.newState || egress.state == RxEmitterStateMachine.State.OUTPUTTING) {
+      NetworkCore.LOGGER.debug(
+          "currentFrame={} symbols={} position={}",
+          egress.currentFrame,
+          egress.symbols,
+          egress.position);
+
+      NetworkCore.LOGGER.debug(
+          "EGRESS prevState={} newState={} frameNull={} symbolsNull={} posIdx={} outSym={}",
+          egress.state,
+          result.newState,
+          result.currentFrame == null,
+          result.symbols == null,
+          result.position,
+          result.outputSymbol);
+    }
+    egress.state = result.newState;
+    egress.currentFrame = result.currentFrame;
+    egress.symbols = result.symbols;
+    egress.position = result.position;
+    Integer outputSymbol = result.outputSymbol;
+    if (outputSymbol != null) {
+      egress.lastOutputPower = outputSymbol;
+    } else {
+      egress.lastOutputPower = 0;
+    }
   }
 
   public int getLastOutputPower() {
