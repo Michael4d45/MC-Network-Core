@@ -1,3 +1,6 @@
 {
-  "parent": "network-core:block/network_core"
+  "parent": "item/generated",
+  "textures": {
+    "layer0": "network-core:item/network_core"
+  }
 }

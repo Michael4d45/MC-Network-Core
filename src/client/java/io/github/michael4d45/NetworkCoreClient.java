@@ -4,8 +4,8 @@ import net.fabricmc.api.ClientModInitializer;
 
 public class NetworkCoreClient implements ClientModInitializer {
 
-    @Override
-    public void onInitializeClient() {
-        // TODO: Client-side initialization code
-    }
+  @Override
+  public void onInitializeClient() {
+    // TODO: Client-side initialization code
+  }
 }

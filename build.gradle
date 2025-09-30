@@ -1,6 +1,7 @@
 plugins {
 	id 'fabric-loom' version "${loom_version}"
 	id 'maven-publish'
+	id 'com.diffplug.spotless' version '6.25.0'
 }
 
 version = project.mod_version
@@ -87,4 +88,45 @@ publishing {
 		// The repositories here will be used for publishing your artifact, not for
 		// retrieving dependencies.
 	}
+}
+
+// Code formatting via Spotless
+spotless {
+	encoding 'UTF-8'
+
+	java {
+		target 'src/*/java/**/*.java'
+		// Use latest Google Java Format
+		googleJavaFormat('1.19.2')
+	importOrder('java', 'javax', 'net.fabricmc', 'net.minecraft', '', 'io.github', '#')
+		removeUnusedImports()
+		trimTrailingWhitespace()
+		endWithNewline()
+	}
+
+	format 'gradle', {
+		target '*.gradle', 'gradle/**/*.gradle'
+		trimTrailingWhitespace()
+		endWithNewline()
+		indentWithTabs(2) // keep existing style; adjust if project moves to spaces
+	}
+
+	format 'misc', {
+		target '**/*.md', '**/.gitignore', '**/*.yml', '**/*.yaml', '**/*.json'
+		trimTrailingWhitespace()
+		endWithNewline()
+	}
+}
+
+// Convenience alias: gradlew format
+tasks.register('format') {
+	group = 'formatting'
+	description = 'Applies code style using Spotless.'
+	dependsOn 'spotlessApply'
+}
+
+tasks.register('formatCheck') {
+	group = 'verification'
+	description = 'Verifies code style using Spotless.'
+	dependsOn 'spotlessCheck'
 }
