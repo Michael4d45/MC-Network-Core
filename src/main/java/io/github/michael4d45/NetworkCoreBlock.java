@@ -29,12 +29,12 @@ import org.jetbrains.annotations.Nullable;
 
 /** Network Core block. */
 public class NetworkCoreBlock extends BlockWithEntity {
-
   public static final EnumProperty<Direction> FACING = Properties.FACING;
   public static final IntProperty RECEIVE_POWERED = IntProperty.of("receive_powered", 0, 15);
   public static final IntProperty TRANSMIT_POWERED = IntProperty.of("transmit_powered", 0, 15);
   public static final BooleanProperty RECEIVE_ACTIVE = BooleanProperty.of("receive_active");
   public static final BooleanProperty TRANSMIT_ACTIVE = BooleanProperty.of("transmit_active");
+  public static final MapCodec<NetworkCoreBlock> CODEC = createCodec(NetworkCoreBlock::new);
 
   public NetworkCoreBlock(Settings settings) {
     super(settings);
@@ -51,8 +51,6 @@ public class NetworkCoreBlock extends BlockWithEntity {
   public static int getTransmitPower(BlockState state) {
     return state.get(TRANSMIT_POWERED);
   }
-
-  public static final MapCodec<NetworkCoreBlock> CODEC = createCodec(NetworkCoreBlock::new);
 
   @Override
   protected MapCodec<? extends BlockWithEntity> getCodec() {
@@ -108,10 +106,9 @@ public class NetworkCoreBlock extends BlockWithEntity {
       ItemStack itemStack) {
     if (!world.isClient) {
       updateTransmitPowering(world, pos, state);
-      NetworkCoreBackend.getInstance().register(world, pos);
       if (world instanceof ServerWorld serverWorld) {
         BlockEntity be = world.getBlockEntity(pos);
-        if (be instanceof NetworkCoreBlockEntity core) {
+        if (be instanceof NetworkCoreEntity core) {
           int assigned = PortManager.getInstance().requestPort(serverWorld, pos, 0);
           NetworkCore.LOGGER.debug("Assigned port {} to Network Core at {}", assigned, pos);
           core.setPort(assigned);
@@ -125,7 +122,6 @@ public class NetworkCoreBlock extends BlockWithEntity {
   public void onStateReplaced(BlockState state, ServerWorld world, BlockPos pos, boolean moved) {
     if (!world.isClient) {
       PortManager.getInstance().release(world, pos);
-      NetworkCoreBackend.getInstance().unregister(world, pos);
     }
     super.onStateReplaced(state, world, pos, moved);
   }
@@ -185,14 +181,13 @@ public class NetworkCoreBlock extends BlockWithEntity {
   @Nullable
   @Override
   public BlockEntity createBlockEntity(BlockPos pos, BlockState state) {
-    return new NetworkCoreBlockEntity(pos, state);
+    return new NetworkCoreEntity(pos, state);
   }
 
-  @Nullable
   @Override
   public <T extends BlockEntity> BlockEntityTicker<T> getTicker(
       World world, BlockState state, BlockEntityType<T> type) {
-    return null;
+    return validateTicker(type, ModBlockEntities.NETWORK_CORE, NetworkCoreEntity::tick);
   }
 
   @Override
@@ -202,7 +197,7 @@ public class NetworkCoreBlock extends BlockWithEntity {
       return ActionResult.PASS;
     }
     BlockEntity blockEntity = world.getBlockEntity(pos);
-    if (blockEntity instanceof NetworkCoreBlockEntity core) {
+    if (blockEntity instanceof NetworkCoreEntity core) {
       player.openHandledScreen(core);
     }
     return ActionResult.SUCCESS;

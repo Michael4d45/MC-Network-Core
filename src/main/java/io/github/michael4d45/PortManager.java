@@ -6,6 +6,8 @@ import java.nio.file.Path;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
+import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
+
 import net.minecraft.nbt.NbtCompound;
 import net.minecraft.nbt.NbtIo;
 import net.minecraft.nbt.NbtSizeTracker;
@@ -27,6 +29,25 @@ public final class PortManager {
 
   private PortManager() {}
 
+  public static void init() {
+    ServerLifecycleEvents.SERVER_STARTED.register(
+        server -> {
+          for (ServerWorld world : server.getWorlds()) {
+            NetworkCore.LOGGER.info(
+                "Requesting port load for world {}", world.getRegistryKey().getValue());
+            PortManager.loadState(world);
+          }
+        });
+    ServerLifecycleEvents.SERVER_STOPPING.register(
+        server -> {
+          for (ServerWorld world : server.getWorlds()) {
+            NetworkCore.LOGGER.info(
+                "Requesting port save for world {}", world.getRegistryKey().getValue());
+            PortManager.saveState(world);
+          }
+        });
+  }
+
   public static PortManager getInstance() {
     return INSTANCE;
   }
@@ -39,7 +60,7 @@ public final class PortManager {
     return getAllocation(world).reassign(pos, desiredPort);
   }
 
-  public NetworkCoreBlockEntity getBlockEntityByPort(ServerWorld world, int port) {
+  public NetworkCoreEntity getBlockEntityByPort(ServerWorld world, int port) {
     if (port < MIN_PORT || port > MAX_PORT) {
       return null;
     }
@@ -48,7 +69,7 @@ public final class PortManager {
     if (pos == null) {
       return null;
     }
-    if (world.getBlockEntity(pos) instanceof NetworkCoreBlockEntity nbe) {
+    if (world.getBlockEntity(pos) instanceof NetworkCoreEntity nbe) {
       if (nbe.getPort() == port) {
         return nbe;
       }

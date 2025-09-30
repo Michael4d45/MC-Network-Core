@@ -11,11 +11,12 @@ import net.minecraft.storage.ReadView;
 import net.minecraft.storage.WriteView;
 import net.minecraft.text.Text;
 import net.minecraft.util.math.BlockPos;
+import net.minecraft.world.World;
 
 import org.jetbrains.annotations.Nullable;
 
 /** Minimal stub block entity. */
-public class NetworkCoreBlockEntity extends BlockEntity implements NamedScreenHandlerFactory {
+public class NetworkCoreEntity extends BlockEntity implements NamedScreenHandlerFactory {
   private static final String PORT_KEY = "Port";
   private static final String SYMBOL_PERIOD_KEY = "SymbolPeriodTicks";
 
@@ -25,7 +26,10 @@ public class NetworkCoreBlockEntity extends BlockEntity implements NamedScreenHa
   /** Symbol period in ticks (1-8, default 2). */
   private int symbolPeriodTicks = 2;
 
-  public NetworkCoreBlockEntity(BlockPos pos, BlockState state) {
+  /** Tick counter for symbol processing. */
+  private int tickCounter = 0;
+
+  public NetworkCoreEntity(BlockPos pos, BlockState state) {
     super(ModBlockEntities.NETWORK_CORE, pos, state);
   }
 
@@ -85,7 +89,6 @@ public class NetworkCoreBlockEntity extends BlockEntity implements NamedScreenHa
         port = assigned;
         markDirty();
       }
-      NetworkCoreBackend.getInstance().register(serverWorld, pos);
     }
   }
 
@@ -93,7 +96,6 @@ public class NetworkCoreBlockEntity extends BlockEntity implements NamedScreenHa
   public void markRemoved() {
     if (this.world instanceof ServerWorld serverWorld) {
       PortManager.getInstance().release(serverWorld, pos);
-      NetworkCoreBackend.getInstance().unregister(serverWorld, pos);
     }
     super.markRemoved();
   }
@@ -107,5 +109,28 @@ public class NetworkCoreBlockEntity extends BlockEntity implements NamedScreenHa
   @Override
   public ScreenHandler createMenu(int syncId, PlayerInventory inv, PlayerEntity player) {
     return null; // Stub: no UI yet
+  }
+
+  public static void tick(World world, BlockPos pos, BlockState state, NetworkCoreEntity be) {
+    if (world.isClient) return;
+
+    int period = be.getSymbolPeriodTicks();
+    be.tickCounter++;
+    if (be.tickCounter >= period) {
+      // TODO: Get transmit power from block state
+      int transmitPower = NetworkCoreBlock.getTransmitPower(state);
+      if (transmitPower > 0) {
+        NetworkCore.LOGGER.debug("Tick Network Core at {} with TX power {}", pos, transmitPower);
+      }
+      // TODO: Process transmission symbol
+      // processTxSymbol(transmitPower);
+      // // TODO: Process receive output
+      // processRxOutput();
+      // // TODO: Get receive power from runtime egress
+      // int receivePower = getRuntime().egress.lastOutputPower;
+      // // TODO: Update block state with receive powering
+      // setReceivePowering(receivePower);
+      be.tickCounter = 0;
+    }
   }
 }

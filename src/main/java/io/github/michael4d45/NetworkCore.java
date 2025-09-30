@@ -1,7 +1,6 @@
 package io.github.michael4d45;
 
 import net.fabricmc.api.ModInitializer;
-import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.fabric.api.itemgroup.v1.ItemGroupEvents;
 
 import net.minecraft.block.AbstractBlock;
@@ -13,7 +12,6 @@ import net.minecraft.registry.Registries;
 import net.minecraft.registry.Registry;
 import net.minecraft.registry.RegistryKey;
 import net.minecraft.registry.RegistryKeys;
-import net.minecraft.server.world.ServerWorld;
 import net.minecraft.util.Identifier;
 
 import org.slf4j.Logger;
@@ -32,27 +30,11 @@ public class NetworkCore implements ModInitializer {
   @Override
   public void onInitialize() {
     LOGGER.info("Initializing NetworkCore mod");
-    ServerLifecycleEvents.SERVER_STARTED.register(
-        server -> {
-          for (ServerWorld world : server.getWorlds()) {
-            LOGGER.info("Requesting port load for world {}", world.getRegistryKey().getValue());
-            PortManager.loadState(world);
-          }
-        });
-    ServerLifecycleEvents.SERVER_STOPPING.register(
-        server -> {
-          for (ServerWorld world : server.getWorlds()) {
-            LOGGER.info("Requesting port save for world {}", world.getRegistryKey().getValue());
-            PortManager.saveState(world);
-          }
-        });
-
-    // Register the block item
-    registerBlockItem("network_core", NETWORK_CORE_BLOCK);
-
+    PortManager.init();
     // Block entity types
     ModBlockEntities.registerAll();
-
+    // Register the block item
+    registerBlockItem("network_core", NETWORK_CORE_BLOCK);
     // Add to Redstone creative tab
     ItemGroupEvents.modifyEntriesEvent(ItemGroups.REDSTONE)
         .register(

@@ -11,7 +11,7 @@ import net.minecraft.util.Identifier;
 public final class ModBlockEntities {
 
   /** Network Core block entity type (lazy registered in {@link #registerAll()}). */
-  public static BlockEntityType<NetworkCoreBlockEntity> NETWORK_CORE;
+  public static BlockEntityType<NetworkCoreEntity> NETWORK_CORE;
 
   private ModBlockEntities() {}
 
@@ -25,7 +25,7 @@ public final class ModBlockEntities {
             Registries.BLOCK_ENTITY_TYPE,
             Identifier.of(NetworkCore.MOD_ID, "network_core"),
             FabricBlockEntityTypeBuilder.create(
-                    NetworkCoreBlockEntity::new, NetworkCore.NETWORK_CORE_BLOCK)
+                    NetworkCoreEntity::new, NetworkCore.NETWORK_CORE_BLOCK)
                 .build());
     NetworkCore.LOGGER.debug("Registered block entity types");
   }
