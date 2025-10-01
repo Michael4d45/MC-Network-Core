@@ -26,7 +26,6 @@ jobs:
           path: networkcore_test.zip
 
   release-datapack:
-    if: github.event_name == 'release'
     needs: build-datapack
     runs-on: ubuntu-24.04
     steps:
