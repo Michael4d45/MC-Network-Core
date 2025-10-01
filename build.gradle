@@ -40,6 +40,11 @@ dependencies {
 	// Fabric API. This is technically optional, but you probably want it anyway.
 	modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
 
+	// Testing - JUnit Jupiter
+	testImplementation platform('org.junit:junit-bom:5.10.2')
+	testImplementation 'org.junit.jupiter:junit-jupiter-api'
+	testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine'
+
 }
 
 processResources {
@@ -52,6 +57,10 @@ processResources {
 
 tasks.withType(JavaCompile).configureEach {
 	it.options.release = 21
+}
+
+test {
+		useJUnitPlatform()
 }
 
 java {
@@ -129,4 +138,12 @@ tasks.register('formatCheck') {
 	group = 'verification'
 	description = 'Verifies code style using Spotless.'
 	dependsOn 'spotlessCheck'
+}
+
+// Copy datapack to test world
+tasks.register('copyDatapack', Copy) {
+	group = 'minecraft'
+	description = 'Copies the networkcore_test datapack to the New World save for testing.'
+	from 'networkcore_test'
+	into 'run/saves/New World/datapacks/networkcore_test'
 }

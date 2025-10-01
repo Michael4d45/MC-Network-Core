@@ -16,7 +16,7 @@ public class CoreRuntime {
     TxFramerStateMachine.Result result =
         TxFramerStateMachine.process(
             prevState, ingress.buffer, ingress.expectedLength, transmitPower);
-    ingress.state = result.newState;
+    ingress.state = result.state;
     ingress.buffer = result.buffer; // buffer is a new list copy from process
     ingress.expectedLength = result.expectedLength;
     if (transmitPower != 0) {
@@ -27,7 +27,7 @@ public class CoreRuntime {
       NetworkCore.LOGGER.debug(
           "INGRESS prevState={} newState={} bufSize={} expected={} committed={}",
           prevState,
-          result.newState,
+          result.state,
           ingress.buffer.size(),
           ingress.expectedLength,
           result.committedFrame != null);

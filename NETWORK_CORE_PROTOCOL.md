@@ -218,6 +218,124 @@ EOF (0)
 
 ---
 
+### 3.4 To IPv4 Frame (TYPE=3)
+
+Outbound frame from local NIC to remote IPv4 host. Includes source addressing and destination IP/port.
+
+Structure:
+
+```
+SOF (15)
+TYPE (3)
+SRC_WORLD_HI (0–15)
+SRC_WORLD_LO (0–15)
+SRC_PORT_HI (0–15)
+SRC_PORT_LO (0–15)
+DST_IP_N0 (0–15)
+DST_IP_N1 (0–15)
+DST_IP_N2 (0–15)
+DST_IP_N3 (0–15)
+DST_IP_N4 (0–15)
+DST_IP_N5 (0–15)
+DST_IP_N6 (0–15)
+DST_IP_N7 (0–15)
+DST_PORT_HI (0–15)
+DST_PORT_LO (0–15)
+LEN_HI (0–15)
+LEN_LO (0–15)
+PAYLOAD[0..P-1] (LEN nibbles)
+EOF (0)
+```
+
+- Header = 17 nibbles (TYPE, SRC_WORLD_HI, SRC_WORLD_LO, SRC_PORT_HI, SRC_PORT_LO, DST_IP_N0..N7, DST_PORT_HI, DST_PORT_LO, LEN_HI, LEN_LO)
+- Payload Length = (LEN_HI << 4) | LEN_LO = number of payload nibbles.
+- IPv4 address = 4 bytes (8 nibbles), high nibble first per byte.
+
+Example: To 192.168.1.10 port 52 from world 0 port 18 with payload [10, 11]
+
+```
+SOF: 15
+TYPE: 3
+SRC_WORLD_HI: 0
+SRC_WORLD_LO: 0
+SRC_PORT_HI: 1
+SRC_PORT_LO: 2
+DST_IP_N0: C
+DST_IP_N1: 0
+DST_IP_N2: A
+DST_IP_N3: 8
+DST_IP_N4: 0
+DST_IP_N5: 1
+DST_IP_N6: 0
+DST_IP_N7: A
+DST_PORT_HI: 3
+DST_PORT_LO: 4
+LEN_HI: 0
+LEN_LO: 2
+PAYLOAD: A, B
+EOF: 0
+```
+
+---
+
+### 3.5 From IPv4 Frame (TYPE=4)
+
+Inbound frame from remote IPv4 host to local NIC. Includes destination addressing and source IP/port.
+
+Structure:
+
+```
+SOF (15)
+TYPE (4)
+DST_WORLD_HI (0–15)
+DST_WORLD_LO (0–15)
+DST_PORT_HI (0–15)
+DST_PORT_LO (0–15)
+SRC_IP_N0 (0–15)
+SRC_IP_N1 (0–15)
+SRC_IP_N2 (0–15)
+SRC_IP_N3 (0–15)
+SRC_IP_N4 (0–15)
+SRC_IP_N5 (0–15)
+SRC_IP_N6 (0–15)
+SRC_IP_N7 (0–15)
+SRC_PORT_HI (0–15)
+SRC_PORT_LO (0–15)
+LEN_HI (0–15)
+LEN_LO (0–15)
+PAYLOAD[0..P-1] (LEN nibbles)
+EOF (0)
+```
+
+- Header = 17 nibbles (TYPE, DST_WORLD_HI, DST_WORLD_LO, DST_PORT_HI, DST_PORT_LO, SRC_IP_N0..N7, SRC_PORT_HI, SRC_PORT_LO, LEN_HI, LEN_LO)
+- Payload Length = (LEN_HI << 4) | LEN_LO = number of payload nibbles.
+- IPv4 address = 4 bytes (8 nibbles), high nibble first per byte.
+
+Example: From 192.168.1.10 port 18 to world 0 port 52 with payload [10, 11]
+
+```
+SOF: 15
+TYPE: 4
+DST_WORLD_HI: 0
+DST_WORLD_LO: 0
+DST_PORT_HI: 3
+DST_PORT_LO: 4
+SRC_IP_N0: C
+SRC_IP_N1: 0
+SRC_IP_N2: A
+SRC_IP_N3: 8
+SRC_IP_N4: 0
+SRC_IP_N5: 1
+SRC_IP_N6: 0
+SRC_IP_N7: A
+SRC_PORT_HI: 1
+SRC_PORT_LO: 2
+LEN_HI: 0
+LEN_LO: 2
+PAYLOAD: A, B
+EOF: 0
+```
+
 ## 4. State Machines
 
 ### 4.1 Tx Framer (Host Redstone → Network Frame Dispatch)
@@ -226,6 +344,8 @@ EOF (0)
 IDLE: expect SOF=15. Else stay.
 TYPE: read TYPE.
 If TYPE=0: collect DST_WORLD/DST_WORLD/DST_PORT/DST_PORT/SRC_WORLD/SRC_WORLD/SRC_PORT/SRC_PORT (8 nibbles).
+If TYPE=3: collect SRC_WORLD/SRC_WORLD/SRC_PORT/SRC_PORT/DST_IP_N0..N7/DST_PORT/DST_PORT (16 nibbles).
+If TYPE=4: collect DST_WORLD/DST_WORLD/DST_PORT/DST_PORT/SRC_IP_N0..N7/SRC_PORT/SRC_PORT (16 nibbles).
 LEN: read LEN_HI + LEN_LO → Payload Length.
 DATA: collect payload (LEN nibbles). If SOF before done → ERROR.
 EOF: require 0. Else → ERROR. On success → COMMIT.
@@ -289,14 +409,14 @@ Bitfield:
 
 ## 9. Design Decisions
 
-| Aspect                 | Decision                                                          |
-| ---------------------- | ----------------------------------------------------------------- |
-| EOF Handling           | Exactly one 0 nibble terminates frame. Idle = constant 0.         |
-| Max Frame Length       | 255 payload nibbles (LEN=255)                                     |
-| Frame Types            | 0=Data (with addresses), 1=Control, 2=Status (proposed)           |
-| Symbol Period          | Default 2 ticks, range 1–8                                        |
-| Overflow               | Drop newest frame, increment counter                              |
-| Status Frame Signature | First nibble = 0xA                                                |
-| Port Header            | DST_WORLD + DST_PORT + SRC_WORLD + SRC_PORT (8 bits each)         |
-| RESET Behavior         | Flush TX, RX, clear error flags (counters remain unless STATSCLR) |
-| Noise Recovery         | Invalid sequence → ERROR → require ≥1 idle nibble (0) → IDLE      |
+| Aspect                 | Decision                                                                        |
+| ---------------------- | ------------------------------------------------------------------------------- |
+| EOF Handling           | Exactly one 0 nibble terminates frame. Idle = constant 0.                       |
+| Max Frame Length       | 255 payload nibbles (LEN=255)                                                   |
+| Frame Types            | 0=Data (with addresses), 1=Control, 2=Status (proposed), 3=To IPv4, 4=From IPv4 |
+| Symbol Period          | Default 2 ticks, range 1–8                                                      |
+| Overflow               | Drop newest frame, increment counter                                            |
+| Status Frame Signature | First nibble = 0xA                                                              |
+| Port Header            | DST_WORLD + DST_PORT + SRC_WORLD + SRC_PORT (8 bits each)                       |
+| RESET Behavior         | Flush TX, RX, clear error flags (counters remain unless STATSCLR)               |
+| Noise Recovery         | Invalid sequence → ERROR → require ≥1 idle nibble (0) → IDLE                    |
