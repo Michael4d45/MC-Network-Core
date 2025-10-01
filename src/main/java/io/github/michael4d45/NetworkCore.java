@@ -16,7 +16,6 @@ import net.minecraft.registry.RegistryKeys;
 import net.minecraft.server.command.CommandManager;
 import net.minecraft.server.command.ServerCommandSource;
 import net.minecraft.server.network.ServerPlayerEntity;
-import net.minecraft.server.world.ServerWorld;
 import net.minecraft.text.Text;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.math.BlockPos;
@@ -97,10 +96,7 @@ public class NetworkCore implements ModInitializer {
                                     return 0;
                                   }
                                   int symbol = IntegerArgumentType.getInteger(context, "symbol");
-                                  nearest
-                                      .getRuntime()
-                                      .processTxSymbol(
-                                          (ServerWorld) player.getWorld(), nearest, symbol);
+                                  nearest.getRuntime().processTxSymbol(nearest, symbol);
                                   source.sendMessage(
                                       Text.literal(
                                           "Sent symbol "

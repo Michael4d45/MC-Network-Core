@@ -15,8 +15,8 @@
 # SRC_PORT_HI 1
 # SRC_PORT_LO 2
 # LEN_HI 15
-# LEN_LO 11
-# PAYLOAD (251 nibbles pattern)
+# LEN_LO 15
+# PAYLOAD (255 nibbles pattern)
 # EOF 0
 
 networkcore pauseTickProcess
@@ -31,9 +31,8 @@ networkcore sendtest 0
 networkcore sendtest 1
 networkcore sendtest 2
 networkcore sendtest 15
-networkcore sendtest 11
-# Payload start (251 symbols)
-# Index 0..250
+networkcore sendtest 15
+# Payload start (255 symbols)
 # Generated pattern below
 networkcore sendtest 1
 networkcore sendtest 2
@@ -303,6 +302,11 @@ networkcore sendtest 10
 networkcore sendtest 11
 networkcore sendtest 12
 networkcore sendtest 13
-# 251 (+ 4 -> 255)
+networkcore sendtest 14
+# 252
+networkcore sendtest 1
+networkcore sendtest 2
+networkcore sendtest 3
+# 255
 networkcore sendtest 0
 networkcore resumeTickProcess

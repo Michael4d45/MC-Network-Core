@@ -5,15 +5,13 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Queue;
 
-import net.minecraft.server.world.ServerWorld;
-
 public class CoreRuntime {
 
   TxRuntime ingress = new TxRuntime();
   RxRuntime egress = new RxRuntime();
   Queue<Frame> rxQueue = new LinkedList<>(); // frames waiting for egress
 
-  public void processTxSymbol(ServerWorld world, NetworkCoreEntity be, int transmitPower) {
+  public void processTxSymbol(NetworkCoreEntity be, int transmitPower) {
     TxFramerStateMachine.State prevState = ingress.state;
     TxFramerStateMachine.Result result =
         TxFramerStateMachine.process(
@@ -35,6 +33,7 @@ public class CoreRuntime {
           result.committedFrame != null);
     }
     if (result.committedFrame != null) {
+      NetworkCore.LOGGER.info("Committed frame: {}", result.committedFrame);
       // framing error count removed for now; could add metrics collection later
       switch (result.committedFrame) {
         case DataFrame dataFrame -> Router.getInstance().sendFrame(dataFrame);

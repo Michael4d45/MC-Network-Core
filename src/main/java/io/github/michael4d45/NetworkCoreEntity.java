@@ -147,7 +147,7 @@ public class NetworkCoreEntity extends BlockEntity implements NamedScreenHandler
     be.tickCounter++;
     if (be.tickCounter >= period) {
       int transmitPower = NetworkCoreBlock.getTransmitPower(state);
-      be.runtime.processTxSymbol(serverWorld, be, transmitPower);
+      be.runtime.processTxSymbol(be, transmitPower);
       be.runtime.processRxOutput();
       int receivePower = be.runtime.getLastOutputPower();
       NetworkCoreBlock.setReceivePowering(serverWorld, pos, state, receivePower);

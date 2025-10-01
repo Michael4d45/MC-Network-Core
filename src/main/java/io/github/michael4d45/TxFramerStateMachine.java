@@ -57,9 +57,9 @@ public class TxFramerStateMachine {
         switch (type) {
           case 0 -> {
             // data
-            if (newBuffer.size() == 12) {
-              int lenHi = newBuffer.get(10);
-              int lenLo = newBuffer.get(11);
+            if (newBuffer.size() == 11) {
+              int lenHi = newBuffer.get(9);
+              int lenLo = newBuffer.get(10);
               int expLen = (lenHi << 4) | lenLo;
               if (expLen >= 0) {
                 return new Result(State.DATA, newBuffer, null, false, expLen);
@@ -84,6 +84,7 @@ public class TxFramerStateMachine {
             }
           }
           default -> {
+            NetworkCore.LOGGER.warn("Unknown frame type: " + type);
             return new Result(State.ERROR, newBuffer, null, true, 0);
           }
         }
@@ -93,9 +94,9 @@ public class TxFramerStateMachine {
         int type2 = newBuffer.get(0);
         int totalExpected;
         if (type2 == 0) {
-          totalExpected = 12 + expectedLength;
+          totalExpected = 11 + expectedLength + 1;
         } else {
-          totalExpected = 4 + expectedLength;
+          totalExpected = 4 + expectedLength + 1;
         }
         if (newBuffer.size() == totalExpected && symbol == 0) {
           if (type2 == 0) {
@@ -134,6 +135,7 @@ public class TxFramerStateMachine {
             return new Result(State.IDLE, newBuffer, controlFrame, false, 0);
           }
         } else if (newBuffer.size() > totalExpected) {
+          NetworkCore.LOGGER.warn("Buffer size exceeded expected length");
           return new Result(State.ERROR, newBuffer, null, true, 0);
         }
       }
