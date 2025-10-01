@@ -49,8 +49,13 @@ public class NetworkCoreEntity extends BlockEntity implements NamedScreenHandler
   }
 
   public void setPort(int port) {
-    if (this.port != port) {
-      this.port = port;
+    if (!(this.world instanceof ServerWorld serverWorld)) {
+      return;
+    }
+    int assigned = Router.getInstance().requestPort(serverWorld, pos, port);
+    NetworkCore.LOGGER.debug("Assigned port {} to Network Core at {}", assigned, pos);
+    if (this.port != assigned) {
+      this.port = assigned;
       markDirty();
     }
   }

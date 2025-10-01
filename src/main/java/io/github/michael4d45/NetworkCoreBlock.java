@@ -107,13 +107,9 @@ public class NetworkCoreBlock extends BlockWithEntity {
       ItemStack itemStack) {
     if (!world.isClient) {
       updateTransmitPowering(world, pos, state);
-      if (world instanceof ServerWorld serverWorld) {
-        BlockEntity be = world.getBlockEntity(pos);
-        if (be instanceof NetworkCoreEntity core) {
-          int assigned = Router.getInstance().requestPort(serverWorld, pos, 0);
-          NetworkCore.LOGGER.debug("Assigned port {} to Network Core at {}", assigned, pos);
-          core.setPort(assigned);
-        }
+      BlockEntity be = world.getBlockEntity(pos);
+      if (be instanceof NetworkCoreEntity core) {
+        core.setPort(0);
       }
     }
     super.onPlaced(world, pos, state, placer, itemStack);

@@ -83,9 +83,29 @@ public final class Router {
       NetworkCore.LOGGER.warn("Cannot send frame, invalid world ID: " + frame.destinationWorld);
       return;
     }
-    NetworkCoreEntity core = getBlockEntityByPort(world, frame.destinationPort);
-    if (core != null) {
-      core.sendFrame(frame);
+    NetworkCoreEntity be = getBlockEntityByPort(world, frame.destinationPort);
+    if (be != null) {
+      be.sendFrame(frame);
+    } else {
+      NetworkCore.LOGGER.warn(
+          "Cannot send frame, no block found at world ID {} port {}",
+          frame.destinationWorld,
+          frame.destinationPort);
+      NetworkCore.LOGGER.debug("Available worlds and ports:");
+      for (var entry : worldIds.entrySet()) {
+        NetworkCore.LOGGER.debug(" - World ID {}: {}", entry.getValue(), entry.getKey());
+        for (var beEntry : allocations.entrySet()) {
+          if (beEntry.getKey().getValue().equals(entry.getKey())) {
+            NetworkCorePortState state = beEntry.getValue();
+            for (int port = 1; port <= 255; port++) {
+              if (state.byPort[port] != null) {
+                NetworkCore.LOGGER.debug("   - Port {}: {}", port, state.byPort[port]);
+              }
+            }
+            break; // Assuming one state per world
+          }
+        }
+      }
     }
   }
 
