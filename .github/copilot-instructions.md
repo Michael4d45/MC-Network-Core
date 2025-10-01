@@ -1,14 +1,11 @@
 # Fabric Minecraft Mod Development Guide
 
-Never update gradle.properties.
-According to https://fabricmc.net/develop, the latest versions for 1.21.7 are:
+Never update gradle.properties. According to https://fabricmc.net/develop, the latest versions for 1.21.7 are:
 
-minecraft_version=1.21.7
-yarn_mappings=1.21.7+build.8
-loader_version=0.17.2
-loom_version=1.11-SNAPSHOT
+minecraft_version=1.21.7 yarn_mappings=1.21.7+build.8 loader_version=0.17.2 loom_version=1.11-SNAPSHOT
 
 # Fabric API
+
 fabric_version=0.129.0+1.21.7
 
 ## Resources Checklist
@@ -19,6 +16,7 @@ fabric_version=0.129.0+1.21.7
 - **Textures**: ensure each model referenced texture exists in `textures/block/`
 - **Loot Table**: `data/network-core/loot_tables/blocks/network_core.json` drops the block item with explosion survival guard
 - **Lang**: include block name plus any screen strings under `screen.network-core.*`
+- **GUI Screen**: Implement screen handler and screen classes for block configuration
 
 ## Version Management
 
@@ -35,6 +33,7 @@ fabric_version=0.129.0+1.21.7
 - State machines parse/emit frames correctly (run tests: `./gradlew test`)
 - Protocol wire format matches `NETWORK_CORE_PROTOCOL.md` specification
 - World loads without hanging (test with existing saves containing blocks)
+- Test datapack functions work: place block, run `/function networkcore_test:test_frame_simple`
 
 ## World Persistence & Loading Considerations
 

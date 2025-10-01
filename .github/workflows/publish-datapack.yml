@@ -1,0 +1,47 @@
+# Publish the NetworkCore test datapack
+# This workflow packages and publishes the test datapack for distribution
+
+name: publish-datapack
+on:
+  push:
+    branches: [ main, master ]
+  release:
+    types: [ published ]
+
+jobs:
+  build-datapack:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: checkout repository
+        uses: actions/checkout@v4
+
+      - name: package datapack
+        run: |
+          cd networkcore_test
+          zip -r ../networkcore_test.zip .
+
+      - name: upload datapack artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: networkcore-test-datapack
+          path: networkcore_test.zip
+
+  release-datapack:
+    if: github.event_name == 'release'
+    needs: build-datapack
+    runs-on: ubuntu-24.04
+    steps:
+      - name: download datapack artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: networkcore-test-datapack
+
+      - name: publish datapack to release
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ github.event.release.upload_url }}
+          asset_path: ./networkcore_test.zip
+          asset_name: networkcore_test-${{ github.event.release.tag_name }}.zip
+          asset_content_type: application/zip

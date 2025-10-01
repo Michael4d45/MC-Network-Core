@@ -3,13 +3,13 @@
   "id": "network-core",
   "version": "${version}",
   "name": "Network Core",
-  "description": "This is an example description! Tell everyone what your mod is about!",
-  "authors": ["Me!"],
+  "description": "A Fabric mod that implements a deterministic, NIC-inspired redstone-to-packet mediation layer with port-based virtual channels and FIFO ring buffers.",
+  "authors": ["Michael"],
   "contact": {
-    "homepage": "https://fabricmc.net/",
-    "sources": "https://github.com/FabricMC/fabric-example-mod"
+    "homepage": "https://github.com/michael4d45/network-core",
+    "sources": "https://github.com/michael4d45/network-core"
   },
-  "license": "CC0-1.0",
+  "license": "MIT",
   "icon": "assets/network-core/icon.png",
   "environment": "*",
   "entrypoints": {
