@@ -25,21 +25,10 @@ jobs:
           name: networkcore-test-datapack
           path: networkcore_test.zip
 
-  release-datapack:
-    needs: build-datapack
-    runs-on: ubuntu-24.04
-    steps:
-      - name: download datapack artifact
-        uses: actions/download-artifact@v4
+      - name: Create GitHub Release and Upload Assets
+        uses: softprops/action-gh-release@v2
         with:
-          name: networkcore-test-datapack
-
-      - name: publish datapack to release
-        uses: actions/upload-release-asset@v1
+          files: |
+            networkcore_test.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ github.event.release.upload_url }}
-          asset_path: ./networkcore_test.zip
-          asset_name: networkcore_test-${{ github.event.release.tag_name }}.zip
-          asset_content_type: application/zip
