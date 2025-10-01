@@ -1,12 +1,11 @@
-# Publish the NetworkCore test datapack
-# This workflow packages and publishes the test datapack for distribution
-
 name: publish-datapack
 on:
   push:
-    branches: [ main, master ]
-  release:
-    types: [ published ]
+    tags:
+      - "v*" # runs only when you push a tag like v1.0.0
+
+permissions:
+  contents: write
 
 jobs:
   build-datapack:

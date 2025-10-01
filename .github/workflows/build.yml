@@ -1,10 +1,11 @@
-# Automatically build the project and run any configured tests for every push
-# and submitted pull request. This can help catch issues that only occur on
-# certain platforms or Java versions, and provides a first line of defence
-# against bad commits.
-
 name: build
-on: [ release ]
+on:
+  push:
+    tags:
+      - "v*" # runs only when you push a tag like v1.0.0
+
+permissions:
+  contents: write
 
 jobs:
   build:
