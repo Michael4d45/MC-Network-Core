@@ -43,6 +43,7 @@ public class NetworkCore implements ModInitializer {
   public void onInitialize() {
     LOGGER.info("Initializing NetworkCore mod");
     DataRouter.init();
+    IPv4Router.init();
     // Block entity types
     ModBlockEntities.registerAll();
     // Register the block item
@@ -153,6 +154,17 @@ public class NetworkCore implements ModInitializer {
                           source.sendMessage(
                               Text.literal(
                                   "Resumed tick process for NetworkCore at " + nearest.getPos()));
+                          return 1;
+                        }))
+            .then(
+                CommandManager.literal("udpaddress")
+                    .executes(
+                        context -> {
+                          ServerCommandSource source = context.getSource();
+                          source.sendMessage(
+                              Text.literal(
+                                  "UDP address for sending packets: "
+                                      + IPv4Router.getUdpAddress()));
                           return 1;
                         })));
   }
