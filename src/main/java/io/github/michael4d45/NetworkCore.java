@@ -6,6 +6,7 @@ import net.fabricmc.fabric.api.itemgroup.v1.ItemGroupEvents;
 
 import net.minecraft.block.AbstractBlock;
 import net.minecraft.block.Block;
+import net.minecraft.block.piston.PistonBehavior;
 import net.minecraft.item.BlockItem;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemGroups;
@@ -33,7 +34,10 @@ public class NetworkCore implements ModInitializer {
       registerBlock(
           "network_core",
           NetworkCoreBlock::new,
-          AbstractBlock.Settings.create().strength(3.0f, 6.0f).requiresTool());
+          AbstractBlock.Settings.create()
+              .strength(3.0f, 6.0f)
+              .requiresTool()
+              .pistonBehavior(PistonBehavior.NORMAL));
 
   @Override
   public void onInitialize() {

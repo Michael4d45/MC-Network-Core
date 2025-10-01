@@ -198,4 +198,9 @@ public class NetworkCoreBlock extends BlockWithEntity {
     }
     return ActionResult.SUCCESS;
   }
+
+  @Override
+  public boolean emitsRedstonePower(BlockState state) {
+    return true;
+  }
 }
