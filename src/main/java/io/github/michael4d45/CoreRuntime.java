@@ -100,21 +100,23 @@ public class CoreRuntime {
       case 0x4 -> {
         // SETPORT - Set port
         int[] args = controlFrame.getArgs();
-        if (args.length >= 1) {
-          int port = args[0] << 4; // high nibble
-          if (args.length >= 2) {
-            port |= args[1]; // low nibble
+        if (args.length >= 1 && args.length <= 4) {
+          int port = 0;
+          // Build port from nibbles (high nibbles first)
+          for (int i = 0; i < args.length; i++) {
+            port = (port << 4) | args[i];
           }
-          if (port >= 0 && port <= 255) {
+          if (port >= 0 && port <= 65535) {
             be.setPort(port);
             int assignedPort = be.getPort();
             NetworkCore.LOGGER.info(
                 "SETPORT control frame: requested {} assigned {}", port, assignedPort);
           } else {
-            NetworkCore.LOGGER.warn("SETPORT control frame could not find block entity");
+            NetworkCore.LOGGER.warn("SETPORT control frame: port {} out of range 0-65535", port);
           }
         } else {
-          NetworkCore.LOGGER.warn("Invalid SETPORT control frame, insufficient args");
+          NetworkCore.LOGGER.warn(
+              "Invalid SETPORT control frame, arg count {} not in range 1-4", args.length);
         }
       }
 

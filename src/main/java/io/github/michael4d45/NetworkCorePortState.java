@@ -9,7 +9,7 @@ import net.minecraft.util.math.BlockPos;
 
 /** Persistent state for network core port allocations per world. */
 public class NetworkCorePortState {
-  final BlockPos[] byPort = new BlockPos[256]; // index 1..255
+  final BlockPos[] byPort = new BlockPos[65536]; // index 0..65535
   final Map<BlockPos, Integer> byPos = new HashMap<>();
 
   public NetworkCorePortState() {}
@@ -21,7 +21,7 @@ public class NetworkCorePortState {
       NbtCompound c = list.getCompound(i).orElse(null);
       if (c != null) {
         int port = c.getByte("Port").orElse((byte) 0) & 0xFF;
-        if (port >= 1 && port <= 255) {
+        if (port >= 0 && port <= 65535) {
           BlockPos pos =
               new BlockPos(
                   c.getInt("X").orElse(0), c.getInt("Y").orElse(0), c.getInt("Z").orElse(0));
@@ -35,7 +35,7 @@ public class NetworkCorePortState {
 
   public NbtCompound writeNbt() {
     NbtList list = new NbtList();
-    for (int i = 1; i < byPort.length; i++) {
+    for (int i = 0; i < byPort.length; i++) {
       BlockPos pos = byPort[i];
       if (pos != null) {
         NbtCompound c = new NbtCompound();
@@ -58,7 +58,7 @@ public class NetworkCorePortState {
       return existing;
     }
     int candidate = clamp(desiredPort);
-    if (candidate > 0) {
+    if (candidate >= 0) {
       BlockPos owner = byPort[candidate];
       if (owner == null || owner.equals(key)) {
         byPort[candidate] = key;
@@ -67,12 +67,12 @@ public class NetworkCorePortState {
       }
     }
     int fallback = findAvailablePort();
-    int assigned = fallback != -1 ? fallback : 0;
-    if (assigned == 0) {
-      NetworkCore.LOGGER.warn("No free network ports available for block at {}.", key);
-    } else {
+    int assigned = fallback != -1 ? fallback : -1;
+    if (assigned >= 0) {
       byPort[assigned] = key;
       byPos.put(key, assigned);
+    } else {
+      byPos.put(key, -1);
     }
     return assigned;
   }
@@ -85,12 +85,12 @@ public class NetworkCorePortState {
     }
     int current = currentObj;
     int candidate = clamp(desiredPort);
-    if (candidate <= 0) {
-      if (current > 0) {
+    if (candidate < 0) {
+      if (current >= 0) {
         byPort[current] = null;
       }
-      byPos.put(key, 0);
-      return 0;
+      byPos.put(key, -1);
+      return -1;
     }
     BlockPos owner = byPort[candidate];
     int newPort = candidate;
@@ -106,7 +106,7 @@ public class NetworkCorePortState {
     if (newPort == current) {
       return current;
     }
-    if (current > 0) {
+    if (current >= 0) {
       byPort[current] = null;
     }
     byPort[newPort] = key;
@@ -117,7 +117,7 @@ public class NetworkCorePortState {
   public synchronized void release(BlockPos pos) {
     BlockPos key = pos.toImmutable();
     Integer current = byPos.remove(key);
-    if (current != null && current > 0) {
+    if (current != null && current >= 0) {
       BlockPos owner = byPort[current];
       if (owner != null && owner.equals(key)) {
         byPort[current] = null;
@@ -126,7 +126,7 @@ public class NetworkCorePortState {
   }
 
   public synchronized BlockPos getPosByPort(int port) {
-    if (port < 1 || port > 255) {
+    if (port < 0 || port > 65535) {
       return null;
     }
     BlockPos pos = byPort[port];
@@ -139,7 +139,7 @@ public class NetworkCorePortState {
   }
 
   private int findAvailablePort() {
-    for (int port = 1; port <= 255; port++) {
+    for (int port = 0; port <= 65535; port++) {
       if (byPort[port] == null) {
         return port;
       }
@@ -151,8 +151,8 @@ public class NetworkCorePortState {
     if (port < 0) {
       return 0;
     }
-    if (port > 255) {
-      return 255;
+    if (port > 65535) {
+      return 65535;
     }
     return port;
   }

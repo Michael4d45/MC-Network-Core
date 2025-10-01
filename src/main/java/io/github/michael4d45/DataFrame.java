@@ -41,21 +41,25 @@ public class DataFrame extends Frame {
   public int[] buildSymbols() {
     int[] pl = getPayload();
     int payloadLen = pl.length;
-    int[] symbols = new int[13 + payloadLen];
+    int[] symbols = new int[17 + payloadLen];
     symbols[0] = 15; // SOF
     symbols[1] = 0; // TYPE
     symbols[2] = (dstWorld >> 4) & 0xF; // DST_WORLD_HI
     symbols[3] = dstWorld & 0xF; // DST_WORLD_LO
-    symbols[4] = (dstPort >> 4) & 0xF; // DST_PORT_HI
-    symbols[5] = dstPort & 0xF; // DST_PORT_LO
-    symbols[6] = (srcWorld >> 4) & 0xF; // SRC_WORLD_HI
-    symbols[7] = srcWorld & 0xF; // SRC_WORLD_LO
-    symbols[8] = (srcPort >> 4) & 0xF; // SRC_PORT_HI
-    symbols[9] = srcPort & 0xF; // SRC_PORT_LO
-    symbols[10] = (payloadLen >> 4) & 0xF; // LEN_HI
-    symbols[11] = payloadLen & 0xF; // LEN_LO
-    System.arraycopy(pl, 0, symbols, 12, payloadLen);
-    symbols[12 + payloadLen] = 0; // EOF
+    symbols[4] = (dstPort >> 12) & 0xF; // DST_PORT_HI_HI
+    symbols[5] = (dstPort >> 8) & 0xF; // DST_PORT_HI_LO
+    symbols[6] = (dstPort >> 4) & 0xF; // DST_PORT_LO_HI
+    symbols[7] = dstPort & 0xF; // DST_PORT_LO_LO
+    symbols[8] = (srcWorld >> 4) & 0xF; // SRC_WORLD_HI
+    symbols[9] = srcWorld & 0xF; // SRC_WORLD_LO
+    symbols[10] = (srcPort >> 12) & 0xF; // SRC_PORT_HI_HI
+    symbols[11] = (srcPort >> 8) & 0xF; // SRC_PORT_HI_LO
+    symbols[12] = (srcPort >> 4) & 0xF; // SRC_PORT_LO_HI
+    symbols[13] = srcPort & 0xF; // SRC_PORT_LO_LO
+    symbols[14] = (payloadLen >> 4) & 0xF; // LEN_HI
+    symbols[15] = payloadLen & 0xF; // LEN_LO
+    System.arraycopy(pl, 0, symbols, 16, payloadLen);
+    symbols[16 + payloadLen] = 0; // EOF
     return symbols;
   }
 }

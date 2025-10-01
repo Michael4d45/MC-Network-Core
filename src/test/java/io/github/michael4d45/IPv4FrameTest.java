@@ -15,10 +15,13 @@ class IPv4FrameTest {
     ToIPv4Frame frame =
         new ToIPv4Frame(0, 0, new byte[] {(byte) 192, (byte) 168, 1, 10}, 0, new int[] {1, 2, 3});
     int[] symbols = frame.buildSymbols();
-    // Expected: SOF=15, TYPE=3, srcWorld=0,0, srcPort=0,0, dstIp=12,0,10,8,0,1,0,10, dstPort=0,0,
+    // Expected: SOF=15, TYPE=3, srcWorld=0,0, srcPort=0,0,0,0, dstIp=12,0,10,8,0,1,0,10,
+    // dstPort=0,0,0,0,
     // len=0,3,
     // payload=1,2,3, EOF=0
-    int[] expected = {15, 3, 0, 0, 0, 0, 12, 0, 10, 8, 0, 1, 0, 10, 0, 0, 0, 3, 1, 2, 3, 0};
+    int[] expected = {
+      15, 3, 0, 0, 0, 0, 0, 0, 12, 0, 10, 8, 0, 1, 0, 10, 0, 0, 0, 0, 0, 3, 1, 2, 3, 0
+    };
     assertArrayEquals(expected, symbols);
   }
 
@@ -31,8 +34,8 @@ class IPv4FrameTest {
     result =
         TxFramerStateMachine.process(
             result.state, result.buffer, result.expectedLength, 3); // TYPE=3
-    // Add header: srcWorld=0,0 srcPort=0,0 dstIp=12,0,10,8,0,1,0,10 dstPort=0,0 len=0,3
-    int[] header = {0, 0, 0, 0, 12, 0, 10, 8, 0, 1, 0, 10, 0, 0, 0, 3};
+    // Add header: srcWorld=0,0 srcPort=0,0,0,0 dstIp=12,0,10,8,0,1,0,10 dstPort=0,0,0,0 len=0,3
+    int[] header = {0, 0, 0, 0, 0, 0, 12, 0, 10, 8, 0, 1, 0, 10, 0, 0, 0, 0, 0, 3};
     for (int h : header) {
       result = TxFramerStateMachine.process(result.state, result.buffer, result.expectedLength, h);
     }
@@ -61,8 +64,8 @@ class IPv4FrameTest {
     result =
         TxFramerStateMachine.process(
             result.state, result.buffer, result.expectedLength, 4); // TYPE=4
-    // Add header: dstWorld=0,0 dstPort=0,0 srcIp=12,0,10,8,0,1,0,10 srcPort=0,0 len=0,3
-    int[] header = {0, 0, 0, 0, 12, 0, 10, 8, 0, 1, 0, 10, 0, 0, 0, 3};
+    // Add header: dstWorld=0,0 dstPort=0,0,0,0 srcIp=12,0,10,8,0,1,0,10 srcPort=0,0,0,0 len=0,3
+    int[] header = {0, 0, 0, 0, 0, 0, 12, 0, 10, 8, 0, 1, 0, 10, 0, 0, 0, 0, 0, 3};
     for (int h : header) {
       result = TxFramerStateMachine.process(result.state, result.buffer, result.expectedLength, h);
     }

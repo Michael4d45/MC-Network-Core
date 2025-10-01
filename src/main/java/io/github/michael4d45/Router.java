@@ -23,8 +23,8 @@ import net.minecraft.world.World;
 /** Manages unique port assignments per world. */
 public final class Router {
 
-  private static final int MIN_PORT = 1;
-  private static final int MAX_PORT = 255;
+  private static final int MIN_PORT = 0;
+  private static final int MAX_PORT = 65535;
   private static final Router INSTANCE = new Router();
 
   private static MinecraftServer server;
@@ -97,7 +97,7 @@ public final class Router {
         for (var beEntry : allocations.entrySet()) {
           if (beEntry.getKey().getValue().equals(entry.getKey())) {
             NetworkCorePortState state = beEntry.getValue();
-            for (int port = 1; port <= 255; port++) {
+            for (int port = 0; port <= 65535; port++) {
               if (state.byPort[port] != null) {
                 NetworkCore.LOGGER.debug("   - Port {}: {}", port, state.byPort[port]);
               }

@@ -31,24 +31,28 @@ public class FromIPv4Frame extends Frame {
   @Override
   public int[] buildSymbols() {
     int payloadLen = payload.length;
-    int[] symbols = new int[19 + payloadLen]; // SOF + 17 header + payload + EOF
+    int[] symbols = new int[23 + payloadLen]; // SOF + 21 header + payload + EOF
     symbols[0] = 15; // SOF
     symbols[1] = 4; // TYPE
     symbols[2] = (dstWorld >> 4) & 0xF; // DST_WORLD_HI
     symbols[3] = dstWorld & 0xF; // DST_WORLD_LO
-    symbols[4] = (dstPort >> 4) & 0xF; // DST_PORT_HI
-    symbols[5] = dstPort & 0xF; // DST_PORT_LO
+    symbols[4] = (dstPort >> 12) & 0xF; // DST_PORT_HI_HI
+    symbols[5] = (dstPort >> 8) & 0xF; // DST_PORT_HI_LO
+    symbols[6] = (dstPort >> 4) & 0xF; // DST_PORT_LO_HI
+    symbols[7] = dstPort & 0xF; // DST_PORT_LO_LO
     // SRC_IP: 8 nibbles
     for (int i = 0; i < 4; i++) {
-      symbols[6 + 2 * i] = (srcIp[i] >> 4) & 0xF;
-      symbols[7 + 2 * i] = srcIp[i] & 0xF;
+      symbols[8 + 2 * i] = (srcIp[i] >> 4) & 0xF;
+      symbols[9 + 2 * i] = srcIp[i] & 0xF;
     }
-    symbols[14] = (srcPort >> 4) & 0xF; // SRC_PORT_HI
-    symbols[15] = srcPort & 0xF; // SRC_PORT_LO
-    symbols[16] = (payloadLen >> 4) & 0xF; // LEN_HI
-    symbols[17] = payloadLen & 0xF; // LEN_LO
-    System.arraycopy(payload, 0, symbols, 18, payloadLen);
-    symbols[18 + payloadLen] = 0; // EOF
+    symbols[16] = (srcPort >> 12) & 0xF; // SRC_PORT_HI_HI
+    symbols[17] = (srcPort >> 8) & 0xF; // SRC_PORT_HI_LO
+    symbols[18] = (srcPort >> 4) & 0xF; // SRC_PORT_LO_HI
+    symbols[19] = srcPort & 0xF; // SRC_PORT_LO_LO
+    symbols[20] = (payloadLen >> 4) & 0xF; // LEN_HI
+    symbols[21] = payloadLen & 0xF; // LEN_LO
+    System.arraycopy(payload, 0, symbols, 22, payloadLen);
+    symbols[22 + payloadLen] = 0; // EOF
     return symbols;
   }
 

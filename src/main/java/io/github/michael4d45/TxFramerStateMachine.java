@@ -57,9 +57,9 @@ public class TxFramerStateMachine {
         switch (type) {
           case 0 -> {
             // data
-            if (newBuffer.size() == 11) {
-              int lenHi = newBuffer.get(9);
-              int lenLo = newBuffer.get(10);
+            if (newBuffer.size() == 15) {
+              int lenHi = newBuffer.get(13);
+              int lenLo = newBuffer.get(14);
               int expLen = (lenHi << 4) | lenLo;
               if (expLen >= 0) {
                 return new Result(State.DATA, newBuffer, null, false, expLen);
@@ -85,9 +85,9 @@ public class TxFramerStateMachine {
           }
           case 3 -> {
             // To IPv4 Frame
-            if (newBuffer.size() == 17) {
-              int lenHi = newBuffer.get(15);
-              int lenLo = newBuffer.get(16);
+            if (newBuffer.size() == 21) {
+              int lenHi = newBuffer.get(19);
+              int lenLo = newBuffer.get(20);
               int expLen = (lenHi << 4) | lenLo;
               if (expLen >= 0) {
                 return new Result(State.DATA, newBuffer, null, false, expLen);
@@ -99,9 +99,9 @@ public class TxFramerStateMachine {
           }
           case 4 -> {
             // From IPv4 Frame
-            if (newBuffer.size() == 17) {
-              int lenHi = newBuffer.get(15);
-              int lenLo = newBuffer.get(16);
+            if (newBuffer.size() == 21) {
+              int lenHi = newBuffer.get(19);
+              int lenLo = newBuffer.get(20);
               int expLen = (lenHi << 4) | lenLo;
               if (expLen >= 0) {
                 return new Result(State.DATA, newBuffer, null, false, expLen);
@@ -122,10 +122,10 @@ public class TxFramerStateMachine {
         int type2 = newBuffer.get(0);
         int totalExpected;
         switch (type2) {
-          case 0 -> totalExpected = 11 + expectedLength + 1;
+          case 0 -> totalExpected = 15 + expectedLength + 1;
           case 1 -> totalExpected = 4 + expectedLength + 1; // control header length
           case 3, 4 ->
-              totalExpected = 17 + expectedLength + 1; // IPv4 header length (TYPE + 16 header)
+              totalExpected = 21 + expectedLength + 1; // IPv4 header length (TYPE + 20 header)
           default -> {
             NetworkCore.LOGGER.warn("Unexpected frame type in DATA state: " + type2);
             return new Result(State.ERROR, newBuffer, null, true, 0);
@@ -136,24 +136,30 @@ public class TxFramerStateMachine {
             case 0 -> {
               int dstWorldHi = newBuffer.get(1);
               int dstWorldLo = newBuffer.get(2);
-              int dstPortHi = newBuffer.get(3);
-              int dstPortLo = newBuffer.get(4);
-              int srcWorldHi = newBuffer.get(5);
-              int srcWorldLo = newBuffer.get(6);
-              int srcPortHi = newBuffer.get(7);
-              int srcPortLo = newBuffer.get(8);
-              int dataLenHi = newBuffer.get(9);
-              int dataLenLo = newBuffer.get(10);
+              int dstPortHiHi = newBuffer.get(3);
+              int dstPortHiLo = newBuffer.get(4);
+              int dstPortLoHi = newBuffer.get(5);
+              int dstPortLoLo = newBuffer.get(6);
+              int srcWorldHi = newBuffer.get(7);
+              int srcWorldLo = newBuffer.get(8);
+              int srcPortHiHi = newBuffer.get(9);
+              int srcPortHiLo = newBuffer.get(10);
+              int srcPortLoHi = newBuffer.get(11);
+              int srcPortLoLo = newBuffer.get(12);
+              int dataLenHi = newBuffer.get(13);
+              int dataLenLo = newBuffer.get(14);
               int payloadLen = (dataLenHi << 4) | dataLenLo;
               if (payloadLen == expectedLength) {
                 int[] payload = new int[payloadLen];
                 for (int i = 0; i < payloadLen; i++) {
-                  payload[i] = newBuffer.get(11 + i);
+                  payload[i] = newBuffer.get(15 + i);
                 }
                 int dstWorld = (dstWorldHi << 4) | dstWorldLo;
-                int dstPort = (dstPortHi << 4) | dstPortLo;
+                int dstPort =
+                    (dstPortHiHi << 12) | (dstPortHiLo << 8) | (dstPortLoHi << 4) | dstPortLoLo;
                 int srcWorld = (srcWorldHi << 4) | srcWorldLo;
-                int srcPort = (srcPortHi << 4) | srcPortLo;
+                int srcPort =
+                    (srcPortHiHi << 12) | (srcPortHiLo << 8) | (srcPortLoHi << 4) | srcPortLoLo;
                 committed = new DataFrame(dstWorld, dstPort, srcWorld, srcPort, payload);
                 return new Result(State.IDLE, newBuffer, committed, false, 0);
               } else {
@@ -173,27 +179,33 @@ public class TxFramerStateMachine {
               // To IPv4 Frame: srcWorld, srcPort, dstIp[4], dstPort, payload
               int srcWorldHi = newBuffer.get(1);
               int srcWorldLo = newBuffer.get(2);
-              int srcPortHi = newBuffer.get(3);
-              int srcPortLo = newBuffer.get(4);
+              int srcPortHiHi = newBuffer.get(3);
+              int srcPortHiLo = newBuffer.get(4);
+              int srcPortLoHi = newBuffer.get(5);
+              int srcPortLoLo = newBuffer.get(6);
               byte[] dstIp = new byte[4];
               for (int i = 0; i < 4; i++) {
-                int hi = newBuffer.get(5 + 2 * i);
-                int lo = newBuffer.get(6 + 2 * i);
+                int hi = newBuffer.get(7 + 2 * i);
+                int lo = newBuffer.get(8 + 2 * i);
                 dstIp[i] = (byte) ((hi << 4) | lo);
               }
-              int dstPortHi = newBuffer.get(13);
-              int dstPortLo = newBuffer.get(14);
-              int dstPort = (dstPortHi << 4) | dstPortLo;
-              int lenHi = newBuffer.get(15);
-              int lenLo = newBuffer.get(16);
+              int dstPortHiHi = newBuffer.get(15);
+              int dstPortHiLo = newBuffer.get(16);
+              int dstPortLoHi = newBuffer.get(17);
+              int dstPortLoLo = newBuffer.get(18);
+              int dstPort =
+                  (dstPortHiHi << 12) | (dstPortHiLo << 8) | (dstPortLoHi << 4) | dstPortLoLo;
+              int lenHi = newBuffer.get(19);
+              int lenLo = newBuffer.get(20);
               int payloadLen = (lenHi << 4) | lenLo;
               if (payloadLen == expectedLength) {
                 int[] payload = new int[payloadLen];
                 for (int i = 0; i < payloadLen; i++) {
-                  payload[i] = newBuffer.get(17 + i);
+                  payload[i] = newBuffer.get(21 + i);
                 }
                 int srcWorld = (srcWorldHi << 4) | srcWorldLo;
-                int srcPort = (srcPortHi << 4) | srcPortLo;
+                int srcPort =
+                    (srcPortHiHi << 12) | (srcPortHiLo << 8) | (srcPortLoHi << 4) | srcPortLoLo;
                 committed = new ToIPv4Frame(srcWorld, srcPort, dstIp, dstPort, payload);
                 return new Result(State.IDLE, newBuffer, committed, false, 0);
               } else {
@@ -204,27 +216,33 @@ public class TxFramerStateMachine {
               // From IPv4 Frame: dstWorld, dstPort, srcIp[4], srcPort, payload
               int dstWorldHi = newBuffer.get(1);
               int dstWorldLo = newBuffer.get(2);
-              int dstPortHi = newBuffer.get(3);
-              int dstPortLo = newBuffer.get(4);
+              int dstPortHiHi = newBuffer.get(3);
+              int dstPortHiLo = newBuffer.get(4);
+              int dstPortLoHi = newBuffer.get(5);
+              int dstPortLoLo = newBuffer.get(6);
               byte[] srcIp = new byte[4];
               for (int i = 0; i < 4; i++) {
-                int hi = newBuffer.get(5 + 2 * i);
-                int lo = newBuffer.get(6 + 2 * i);
+                int hi = newBuffer.get(7 + 2 * i);
+                int lo = newBuffer.get(8 + 2 * i);
                 srcIp[i] = (byte) ((hi << 4) | lo);
               }
-              int srcPortHi = newBuffer.get(13);
-              int srcPortLo = newBuffer.get(14);
-              int srcPort = (srcPortHi << 4) | srcPortLo;
-              int lenHi = newBuffer.get(15);
-              int lenLo = newBuffer.get(16);
+              int srcPortHiHi = newBuffer.get(15);
+              int srcPortHiLo = newBuffer.get(16);
+              int srcPortLoHi = newBuffer.get(17);
+              int srcPortLoLo = newBuffer.get(18);
+              int srcPort =
+                  (srcPortHiHi << 12) | (srcPortHiLo << 8) | (srcPortLoHi << 4) | srcPortLoLo;
+              int lenHi = newBuffer.get(19);
+              int lenLo = newBuffer.get(20);
               int payloadLen = (lenHi << 4) | lenLo;
               if (payloadLen == expectedLength) {
                 int[] payload = new int[payloadLen];
                 for (int i = 0; i < payloadLen; i++) {
-                  payload[i] = newBuffer.get(17 + i);
+                  payload[i] = newBuffer.get(21 + i);
                 }
                 int dstWorld = (dstWorldHi << 4) | dstWorldLo;
-                int dstPort = (dstPortHi << 4) | dstPortLo;
+                int dstPort =
+                    (dstPortHiHi << 12) | (dstPortHiLo << 8) | (dstPortLoHi << 4) | dstPortLoLo;
                 committed = new FromIPv4Frame(dstWorld, dstPort, srcIp, srcPort, payload);
                 return new Result(State.IDLE, newBuffer, committed, false, 0);
               } else {

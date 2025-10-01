@@ -11,7 +11,7 @@ The mod implements a fixed nibble-based wire protocol with frame delimiting, por
 ## Features
 
 - **Redstone Integration**: Transmit and receive data using redstone power levels (0-15)
-- **Port-Based Routing**: Assign unique ports (1-255) to Network Core blocks for virtual channels
+- **Port-Based Routing**: Assign unique ports (0-65535) to Network Core blocks for virtual channels
 - **Deterministic Protocol**: Fixed wire format with SOF/EOF framing and error handling
 - **World Persistence**: Automatic saving/loading of port assignments and block state
 - **GUI Configuration**: In-game interface to configure port and symbol timing
@@ -34,7 +34,7 @@ The mod implements a fixed nibble-based wire protocol with frame delimiting, por
 
 ### Configuration
 
-- **Port**: Set the network port (1-255) for this block
+- **Port**: Set the network port (0-65535) for this block
 - **Symbol Period**: Adjust timing between symbols (1-8 ticks, default 2)
 
 ### Redstone Interface

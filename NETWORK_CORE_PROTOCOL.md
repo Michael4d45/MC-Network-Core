@@ -36,19 +36,23 @@ SOF (15)
 TYPE (0)
 DST_WORLD_HI (0–15)
 DST_WORLD_LO (0–15)
-DST_PORT_HI (0–15)
-DST_PORT_LO (0–15)
+DST_PORT_HI_HI (0–15)
+DST_PORT_HI_LO (0–15)
+DST_PORT_LO_HI (0–15)
+DST_PORT_LO_LO (0–15)
 SRC_WORLD_HI (0–15)
 SRC_WORLD_LO (0–15)
-SRC_PORT_HI (0–15)
-SRC_PORT_LO (0–15)
+SRC_PORT_HI_HI (0–15)
+SRC_PORT_HI_LO (0–15)
+SRC_PORT_LO_HI (0–15)
+SRC_PORT_LO_LO (0–15)
 LEN_HI (0–15)
 LEN_LO (0–15)
 PAYLOAD[0..P-1]
 EOF (0)
 ```
 
-- Header = 11 nibbles (TYPE, DST_WORLD_HI, DST_WORLD_LO, DST_PORT_HI, DST_PORT_LO, SRC_WORLD_HI, SRC_WORLD_LO, SRC_PORT_HI, SRC_PORT_LO, LEN_HI, LEN_LO)
+- Header = 15 nibbles (TYPE, DST_WORLD_HI, DST_WORLD_LO, DST_PORT_HI_HI, DST_PORT_HI_LO, DST_PORT_LO_HI, DST_PORT_LO_LO, SRC_WORLD_HI, SRC_WORLD_LO, SRC_PORT_HI_HI, SRC_PORT_HI_LO, SRC_PORT_LO_HI, SRC_PORT_LO_LO, LEN_HI, LEN_LO)
 - Payload Length = (LEN_HI << 4) | LEN_LO = number of payload nibbles.
 - Minimum valid Payload Length = 0.
 
@@ -77,31 +81,35 @@ EOF (0)
 ### Step 2. Addresses
 
 - Destination world = `0x00` → `DST_WORLD_HI=0x0` (0), `DST_WORLD_LO=0x0` (0)
-- Destination port = `0x34` (52) → `DST_PORT_HI=0x3` (3), `DST_PORT_LO=0x4` (4)
+- Destination port = `0x0034` (52) → `DST_PORT_HI_HI=0x0` (0), `DST_PORT_HI_LO=0x0` (0), `DST_PORT_LO_HI=0x3` (3), `DST_PORT_LO_LO=0x4` (4)
 - Source world = `0x00` → `SRC_WORLD_HI=0x0` (0), `SRC_WORLD_LO=0x0` (0)
-- Source port = `0x12` (18) → `SRC_PORT_HI=0x1` (1), `SRC_PORT_LO=0x2` (2)
+- Source port = `0x0012` (18) → `SRC_PORT_HI_HI=0x0` (0), `SRC_PORT_HI_LO=0x0` (0), `SRC_PORT_LO_HI=0x1` (1), `SRC_PORT_LO_LO=0x2` (2)
 
 ---
 
 ### Step 3. Frame on the wire
 
-| Symbol       | Hex | Decimal | Meaning                                         |
-| ------------ | --- | ------- | ----------------------------------------------- |
-| SOF          | 0xF | 15      | Start of Frame                                  |
-| TYPE         | 0x0 | 0       | Frame Type (0 = Data)                           |
-| DST_WORLD_HI | 0x0 | 0       | Destination world high nibble                   |
-| DST_WORLD_LO | 0x0 | 0       | Destination world low nibble → 0x00 = overworld |
-| DST_PORT_HI  | 0x3 | 3       | Destination port high nibble                    |
-| DST_PORT_LO  | 0x4 | 4       | Destination port low nibble → 0x34 = 52         |
-| SRC_WORLD_HI | 0x0 | 0       | Source world high nibble                        |
-| SRC_WORLD_LO | 0x0 | 0       | Source world low nibble → 0x00 = overworld      |
-| SRC_PORT_HI  | 0x1 | 1       | Source port high nibble                         |
-| SRC_PORT_LO  | 0x2 | 2       | Source port low nibble → 0x12 = 18              |
-| LEN_HI       | 0x0 | 0       | Payload length high nibble                      |
-| LEN_LO       | 0x2 | 2       | Payload length low nibble → Payload length = 2  |
-| PAY0         | 0xA | 10      | Payload nibble 0                                |
-| PAY1         | 0xB | 11      | Payload nibble 1                                |
-| EOF          | 0x0 | 0       | End of Frame                                    |
+| Symbol         | Hex | Decimal | Meaning                                         |
+| -------------- | --- | ------- | ----------------------------------------------- |
+| SOF            | 0xF | 15      | Start of Frame                                  |
+| TYPE           | 0x0 | 0       | Frame Type (0 = Data)                           |
+| DST_WORLD_HI   | 0x0 | 0       | Destination world high nibble                   |
+| DST_WORLD_LO   | 0x0 | 0       | Destination world low nibble → 0x00 = overworld |
+| DST_PORT_HI_HI | 0x0 | 0       | Destination port high-high nibble               |
+| DST_PORT_HI_LO | 0x0 | 0       | Destination port high-low nibble                |
+| DST_PORT_LO_HI | 0x3 | 3       | Destination port low-high nibble                |
+| DST_PORT_LO_LO | 0x4 | 4       | Destination port low-low nibble → 0x0034 = 52   |
+| SRC_WORLD_HI   | 0x0 | 0       | Source world high nibble                        |
+| SRC_WORLD_LO   | 0x0 | 0       | Source world low nibble → 0x00 = overworld      |
+| SRC_PORT_HI_HI | 0x0 | 0       | Source port high-high nibble                    |
+| SRC_PORT_HI_LO | 0x0 | 0       | Source port high-low nibble                     |
+| SRC_PORT_LO_HI | 0x1 | 1       | Source port low-high nibble                     |
+| SRC_PORT_LO_LO | 0x2 | 2       | Source port low-low nibble → 0x0012 = 18        |
+| LEN_HI         | 0x0 | 0       | Payload length high nibble                      |
+| LEN_LO         | 0x2 | 2       | Payload length low nibble → Payload length = 2  |
+| PAY0           | 0xA | 10      | Payload nibble 0                                |
+| PAY1           | 0xB | 11      | Payload nibble 1                                |
+| EOF            | 0x0 | 0       | End of Frame                                    |
 
 ---
 
@@ -109,9 +117,9 @@ EOF (0)
 
 - Payload length = 2 nibbles
 - Destination world = `0x00` → overworld
-- Destination port = `0x34` → 52
+- Destination port = `0x0034` → 52
 - Source world = `0x00` → overworld
-- Source port = `0x12` → 18
+- Source port = `0x0012` → 18
 - Payload = `[0xA, 0xB]` → `[10, 11]`
 - Frame terminates cleanly at EOF
 
@@ -133,14 +141,14 @@ EOF (0)
 
 Opcodes:
 
-| Opcode | Mnemonic | Args        | Meaning                                              |
-| ------ | -------- | ----------- | ---------------------------------------------------- |
-| 0x0    | NOP      | –           | Idle / resync assist                                 |
-| 0x1    | RESET    | –           | Flush TX/RX, clear errors                            |
-| 0x2    | MODEQ    | –           | Request status frame                                 |
-| 0x3    | SETPER   | 1 nibble    | Set symbol period (1–8, clamped)                     |
-| 0x4    | SETPORT  | 1–2 nibbles | Set port (high nibble optional, low nibble required) |
-| 0x5    | STATSCLR | –           | Clear counters                                       |
+| Opcode | Mnemonic | Args        | Meaning                                                            |
+| ------ | -------- | ----------- | ------------------------------------------------------------------ |
+| 0x0    | NOP      | –           | Idle / resync assist                                               |
+| 0x1    | RESET    | –           | Flush TX/RX, clear errors                                          |
+| 0x2    | MODEQ    | –           | Request status frame                                               |
+| 0x3    | SETPER   | 1 nibble    | Set symbol period (1–8, clamped)                                   |
+| 0x4    | SETPORT  | 1–4 nibbles | Set port (high-high, high-low, low-high, low-low nibbles optional) |
+| 0x5    | STATSCLR | –           | Clear counters                                                     |
 
 ---
 
@@ -150,9 +158,11 @@ Opcodes:
 
 ### Target value
 
-- Port = `0x2A`
-- High nibble = `0x2`
-- Low nibble = `0xA`
+- Port = `0x002A` (42)
+- High-high nibble = `0x0`
+- High-low nibble = `0x0`
+- Low-high nibble = `0x2`
+- Low-low nibble = `0xA`
 
 ---
 
@@ -162,10 +172,12 @@ Opcodes:
 15   (SOF)
 1    (TYPE = 1 → Control)
 0    (LEN_HI)
-3    (LEN_LO = 3)
+6    (LEN_LO = 6)
 4    (OP = SETPORT)
-2    (ARG[0] = high nibble = 0x2)
-A    (ARG[1] = low nibble = 0xA)
+0    (ARG[0] = high-high nibble = 0x0)
+0    (ARG[1] = high-low nibble = 0x0)
+2    (ARG[2] = low-high nibble = 0x2)
+A    (ARG[3] = low-low nibble = 0xA)
 0    (EOF)
 ```
 
@@ -175,22 +187,27 @@ A    (ARG[1] = low nibble = 0xA)
 
 - **SOF (15):** Marks start of frame
 - **TYPE = 1:** Control frame
-- **LEN = 3:** Payload length = 3 nibbles (OP + 2 ARG)
+- **LEN = 6:** Payload length = 6 nibbles (OP + 4 ARG)
 - **OP = 4:** The SETPORT opcode
-- **ARG[0] = 0x2:** High nibble of the port number
-- **ARG[1] = 0xA:** Low nibble of the port number
+- **ARG[0] = 0x0:** High-high nibble of the port number
+- **ARG[1] = 0x0:** High-low nibble of the port number
+- **ARG[2] = 0x2:** Low-high nibble of the port number
+- **ARG[3] = 0xA:** Low-low nibble of the port number
 - **EOF (0):** Frame terminator
 
 ---
 
 ### Notes
 
-- If you only wanted to set a port ≤ 15 (fits in one nibble), LEN = 2, omit `ARG[0]`.
+- If you only wanted to set a port ≤ 15 (fits in one nibble), LEN = 2, omit `ARG[0]`, `ARG[1]`, `ARG[2]`.
 - For example, port `0x7` would be:
 
   ```
   15, 1, 0,2, 4,7, 0
   ```
+
+- For ports ≤ 255 (fits in two nibbles), LEN = 3, omit `ARG[0]`, `ARG[1]`.
+- For ports ≤ 4095 (fits in three nibbles), LEN = 4, omit `ARG[0]`.
 
 ---
 
@@ -229,8 +246,10 @@ SOF (15)
 TYPE (3)
 SRC_WORLD_HI (0–15)
 SRC_WORLD_LO (0–15)
-SRC_PORT_HI (0–15)
-SRC_PORT_LO (0–15)
+SRC_PORT_HI_HI (0–15)
+SRC_PORT_HI_LO (0–15)
+SRC_PORT_LO_HI (0–15)
+SRC_PORT_LO_LO (0–15)
 DST_IP_N0 (0–15)
 DST_IP_N1 (0–15)
 DST_IP_N2 (0–15)
@@ -239,15 +258,17 @@ DST_IP_N4 (0–15)
 DST_IP_N5 (0–15)
 DST_IP_N6 (0–15)
 DST_IP_N7 (0–15)
-DST_PORT_HI (0–15)
-DST_PORT_LO (0–15)
+DST_PORT_HI_HI (0–15)
+DST_PORT_HI_LO (0–15)
+DST_PORT_LO_HI (0–15)
+DST_PORT_LO_LO (0–15)
 LEN_HI (0–15)
 LEN_LO (0–15)
 PAYLOAD[0..P-1] (LEN nibbles)
 EOF (0)
 ```
 
-- Header = 17 nibbles (TYPE, SRC_WORLD_HI, SRC_WORLD_LO, SRC_PORT_HI, SRC_PORT_LO, DST_IP_N0..N7, DST_PORT_HI, DST_PORT_LO, LEN_HI, LEN_LO)
+- Header = 21 nibbles (TYPE, SRC_WORLD_HI, SRC_WORLD_LO, SRC_PORT_HI_HI, SRC_PORT_HI_LO, SRC_PORT_LO_HI, SRC_PORT_LO_LO, DST_IP_N0..N7, DST_PORT_HI_HI, DST_PORT_HI_LO, DST_PORT_LO_HI, DST_PORT_LO_LO, LEN_HI, LEN_LO)
 - Payload Length = (LEN_HI << 4) | LEN_LO = number of payload nibbles.
 - IPv4 address = 4 bytes (8 nibbles), high nibble first per byte.
 
@@ -258,8 +279,10 @@ SOF: 15
 TYPE: 3
 SRC_WORLD_HI: 0
 SRC_WORLD_LO: 0
-SRC_PORT_HI: 1
-SRC_PORT_LO: 2
+SRC_PORT_HI_HI: 0
+SRC_PORT_HI_LO: 0
+SRC_PORT_LO_HI: 1
+SRC_PORT_LO_LO: 2
 DST_IP_N0: C
 DST_IP_N1: 0
 DST_IP_N2: A
@@ -268,8 +291,10 @@ DST_IP_N4: 0
 DST_IP_N5: 1
 DST_IP_N6: 0
 DST_IP_N7: A
-DST_PORT_HI: 3
-DST_PORT_LO: 4
+DST_PORT_HI_HI: 0
+DST_PORT_HI_LO: 0
+DST_PORT_LO_HI: 3
+DST_PORT_LO_LO: 4
 LEN_HI: 0
 LEN_LO: 2
 PAYLOAD: A, B
@@ -289,8 +314,10 @@ SOF (15)
 TYPE (4)
 DST_WORLD_HI (0–15)
 DST_WORLD_LO (0–15)
-DST_PORT_HI (0–15)
-DST_PORT_LO (0–15)
+DST_PORT_HI_HI (0–15)
+DST_PORT_HI_LO (0–15)
+DST_PORT_LO_HI (0–15)
+DST_PORT_LO_LO (0–15)
 SRC_IP_N0 (0–15)
 SRC_IP_N1 (0–15)
 SRC_IP_N2 (0–15)
@@ -299,15 +326,17 @@ SRC_IP_N4 (0–15)
 SRC_IP_N5 (0–15)
 SRC_IP_N6 (0–15)
 SRC_IP_N7 (0–15)
-SRC_PORT_HI (0–15)
-SRC_PORT_LO (0–15)
+SRC_PORT_HI_HI (0–15)
+SRC_PORT_HI_LO (0–15)
+SRC_PORT_LO_HI (0–15)
+SRC_PORT_LO_LO (0–15)
 LEN_HI (0–15)
 LEN_LO (0–15)
 PAYLOAD[0..P-1] (LEN nibbles)
 EOF (0)
 ```
 
-- Header = 17 nibbles (TYPE, DST_WORLD_HI, DST_WORLD_LO, DST_PORT_HI, DST_PORT_LO, SRC_IP_N0..N7, SRC_PORT_HI, SRC_PORT_LO, LEN_HI, LEN_LO)
+- Header = 21 nibbles (TYPE, DST_WORLD_HI, DST_WORLD_LO, DST_PORT_HI_HI, DST_PORT_HI_LO, DST_PORT_LO_HI, DST_PORT_LO_LO, SRC_IP_N0..N7, SRC_PORT_HI_HI, SRC_PORT_HI_LO, SRC_PORT_LO_HI, SRC_PORT_LO_LO, LEN_HI, LEN_LO)
 - Payload Length = (LEN_HI << 4) | LEN_LO = number of payload nibbles.
 - IPv4 address = 4 bytes (8 nibbles), high nibble first per byte.
 
@@ -318,8 +347,10 @@ SOF: 15
 TYPE: 4
 DST_WORLD_HI: 0
 DST_WORLD_LO: 0
-DST_PORT_HI: 3
-DST_PORT_LO: 4
+DST_PORT_HI_HI: 0
+DST_PORT_HI_LO: 0
+DST_PORT_LO_HI: 3
+DST_PORT_LO_LO: 4
 SRC_IP_N0: C
 SRC_IP_N1: 0
 SRC_IP_N2: A
@@ -328,8 +359,10 @@ SRC_IP_N4: 0
 SRC_IP_N5: 1
 SRC_IP_N6: 0
 SRC_IP_N7: A
-SRC_PORT_HI: 1
-SRC_PORT_LO: 2
+SRC_PORT_HI_HI: 0
+SRC_PORT_HI_LO: 0
+SRC_PORT_LO_HI: 1
+SRC_PORT_LO_LO: 2
 LEN_HI: 0
 LEN_LO: 2
 PAYLOAD: A, B
@@ -343,9 +376,9 @@ EOF: 0
 ```
 IDLE: expect SOF=15. Else stay.
 TYPE: read TYPE.
-If TYPE=0: collect DST_WORLD/DST_WORLD/DST_PORT/DST_PORT/SRC_WORLD/SRC_WORLD/SRC_PORT/SRC_PORT (8 nibbles).
-If TYPE=3: collect SRC_WORLD/SRC_WORLD/SRC_PORT/SRC_PORT/DST_IP_N0..N7/DST_PORT/DST_PORT (16 nibbles).
-If TYPE=4: collect DST_WORLD/DST_WORLD/DST_PORT/DST_PORT/SRC_IP_N0..N7/SRC_PORT/SRC_PORT (16 nibbles).
+If TYPE=0: collect DST_WORLD/DST_WORLD/DST_PORT_HI_HI/DST_PORT_HI_LO/DST_PORT_LO_HI/DST_PORT_LO_LO/SRC_WORLD/SRC_WORLD/SRC_PORT_HI_HI/SRC_PORT_HI_LO/SRC_PORT_LO_HI/SRC_PORT_LO_LO (14 nibbles).
+If TYPE=3: collect SRC_WORLD/SRC_WORLD/SRC_PORT_HI_HI/SRC_PORT_HI_LO/SRC_PORT_LO_HI/SRC_PORT_LO_LO/DST_IP_N0..N7/DST_PORT_HI_HI/DST_PORT_HI_LO/DST_PORT_LO_HI/DST_PORT_LO_LO (20 nibbles).
+If TYPE=4: collect DST_WORLD/DST_WORLD/DST_PORT_HI_HI/DST_PORT_HI_LO/DST_PORT_LO_HI/DST_PORT_LO_LO/SRC_IP_N0..N7/SRC_PORT_HI_HI/SRC_PORT_HI_LO/SRC_PORT_LO_HI/SRC_PORT_LO_LO (20 nibbles).
 LEN: read LEN_HI + LEN_LO → Payload Length.
 DATA: collect payload (LEN nibbles). If SOF before done → ERROR.
 EOF: require 0. Else → ERROR. On success → COMMIT.
@@ -391,10 +424,10 @@ Planned for future implementation:
 
 ## 7. Configuration Knobs
 
-| Name                | Storage | Default | Range | Purpose                             |
-| ------------------- | ------- | ------- | ----- | ----------------------------------- |
-| symbol_period_ticks | NBT     | 2       | 1–8   | Timing tolerance (ticks per symbol) |
-| port                | NBT     | 0       | 0–255 | NIC’s own port ID for frames        |
+| Name                | Storage | Default | Range   | Purpose                             |
+| ------------------- | ------- | ------- | ------- | ----------------------------------- |
+| symbol_period_ticks | NBT     | 2       | 1–8     | Timing tolerance (ticks per symbol) |
+| port                | NBT     | 0       | 0–65535 | NIC's own port ID for frames        |
 
 ---
 
@@ -417,6 +450,6 @@ Bitfield:
 | Symbol Period          | Default 2 ticks, range 1–8                                                      |
 | Overflow               | Drop newest frame, increment counter                                            |
 | Status Frame Signature | First nibble = 0xA                                                              |
-| Port Header            | DST_WORLD + DST_PORT + SRC_WORLD + SRC_PORT (8 bits each)                       |
+| Port Header            | DST_WORLD + DST_PORT (16 bits) + SRC_WORLD + SRC_PORT (16 bits)                 |
 | RESET Behavior         | Flush TX, RX, clear error flags (counters remain unless STATSCLR)               |
 | Noise Recovery         | Invalid sequence → ERROR → require ≥1 idle nibble (0) → IDLE                    |

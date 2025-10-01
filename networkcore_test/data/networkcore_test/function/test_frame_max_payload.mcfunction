@@ -1,19 +1,25 @@
-# Max length data frame test
+# Max length data frame test with 255 nibble payload
+# SOF=15 (Start of Frame), TYPE=0 (Data), DST_WORLD_HI=0, DST_WORLD_LO=0 (World=0), DST_PORT_HI_HI=0, DST_PORT_HI_LO=0, DST_PORT_LO_HI=2, DST_PORT_LO_LO=10 (Port=42), SRC_WORLD_HI=0, SRC_WORLD_LO=0 (World=0), SRC_PORT_HI_HI=0, SRC_PORT_HI_LO=0, SRC_PORT_LO_HI=1, SRC_PORT_LO_LO=2 (Port=18), LEN_HI=15, LEN_LO=15 (Length=255), PAYLOAD[0..254], EOF=0 (End of Frame)
+# DST_PORT = 42, SRC_PORT = 18, PAYLOAD = [255 nibbles: repeating pattern 1-14]
 # LEN = 0xFB (251) → payload length = 251 nibbles
 # Pattern: repeating 1..14 (skips 0 and 15 to avoid EOF/SOF mid-payload) then wraps
-# Ports: DST=0x2A (2,A) SRC=0x12 (1,2)
+# Ports: DST=0x002A (0,0,2,A) SRC=0x0012 (0,0,1,2)
 # Worlds: DST=0x00 SRC=0x00 (overworld)
 # Frame layout:
 # SOF 15
 # TYPE 0
 # DST_WORLD_HI 0
 # DST_WORLD_LO 0
-# DST_PORT_HI 2
-# DST_PORT_LO 10
+# DST_PORT_HI_HI 0
+# DST_PORT_HI_LO 0
+# DST_PORT_LO_HI 2
+# DST_PORT_LO_LO 10
 # SRC_WORLD_HI 0
 # SRC_WORLD_LO 0
-# SRC_PORT_HI 1
-# SRC_PORT_LO 2
+# SRC_PORT_HI_HI 0
+# SRC_PORT_HI_LO 0
+# SRC_PORT_LO_HI 1
+# SRC_PORT_LO_LO 2
 # LEN_HI 15
 # LEN_LO 15
 # PAYLOAD (255 nibbles pattern)
@@ -24,8 +30,12 @@ networkcore sendtest 15
 networkcore sendtest 0
 networkcore sendtest 0
 networkcore sendtest 0
+networkcore sendtest 0
+networkcore sendtest 0
 networkcore sendtest 2
 networkcore sendtest 10
+networkcore sendtest 0
+networkcore sendtest 0
 networkcore sendtest 0
 networkcore sendtest 0
 networkcore sendtest 1

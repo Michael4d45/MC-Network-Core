@@ -86,8 +86,8 @@ public class NetworkCoreEntity extends BlockEntity implements NamedScreenHandler
 
   @Override
   protected void readData(ReadView view) {
-    int loaded = view.getOptionalInt(PORT_KEY).orElse(0);
-    this.port = Math.max(0, Math.min(255, loaded));
+    int loaded = view.getOptionalInt(PORT_KEY).orElse(-1);
+    this.port = Math.max(-1, Math.min(65535, loaded));
 
     int loadedPeriod = view.getOptionalInt(SYMBOL_PERIOD_KEY).orElse(2);
     this.symbolPeriodTicks = Math.max(1, Math.min(8, loadedPeriod));
@@ -95,7 +95,7 @@ public class NetworkCoreEntity extends BlockEntity implements NamedScreenHandler
 
   @Override
   protected void writeData(WriteView view) {
-    if (port > 0) {
+    if (port >= 0) {
       view.putInt(PORT_KEY, port);
     }
     if (symbolPeriodTicks != 2) { // Only save if not default
@@ -106,7 +106,7 @@ public class NetworkCoreEntity extends BlockEntity implements NamedScreenHandler
   // Called after world sets this block entity up (Fabric provides ticking/level load hooks).
   public void handleLoad() {
     if (this.world instanceof ServerWorld serverWorld) {
-      if (port > 0) {
+      if (port >= 0) {
         int assigned = Router.getInstance().registerExisting(serverWorld, pos, port);
         if (assigned != port) {
           port = assigned; // adjust to resolved port
