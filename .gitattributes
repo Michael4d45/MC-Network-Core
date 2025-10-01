@@ -7,3 +7,20 @@
 # These are Windows script files and should use crlf
 *.bat           text eol=crlf
 
+# Enforce LF for build scripts and source so Spotless passes in CI
+*.gradle        text eol=lf
+*.gradle.kts    text eol=lf
+*.java          text eol=lf
+*.md            text eol=lf
+*.yml           text eol=lf
+*.yaml          text eol=lf
+*.json          text eol=lf
+*.properties    text eol=lf
+
+# Do not auto-normalize binary assets
+*.png           binary
+*.jpg           binary
+*.jpeg          binary
+*.gif           binary
+*.jar           binary
+
