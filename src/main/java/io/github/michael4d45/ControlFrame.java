@@ -7,8 +7,6 @@ public class ControlFrame extends Frame {
   private final int[] args;
 
   public ControlFrame(int opcode, int[] args) {
-    this.destinationPort = 0;
-    this.destinationWorld = 0;
     this.opcode = opcode;
     // defensive copy to avoid exposing internal representation
     this.args = (args == null) ? new int[0] : java.util.Arrays.copyOf(args, args.length);

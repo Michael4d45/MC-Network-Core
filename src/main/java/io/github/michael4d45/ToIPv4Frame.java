@@ -10,8 +10,6 @@ public class ToIPv4Frame extends Frame {
   private final int[] payload;
 
   public ToIPv4Frame(int srcWorld, int srcPort, byte[] dstIp, int dstPort, int[] payload) {
-    this.destinationPort = 0;
-    this.destinationWorld = 0;
     this.srcWorld = srcWorld;
     this.srcPort = srcPort;
     this.dstIp = (dstIp == null) ? new byte[0] : dstIp.clone();

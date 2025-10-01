@@ -9,8 +9,6 @@ public class StatusFrame extends Frame {
   private final int errorFlags;
 
   public StatusFrame(int world, int port, int rxDepth, int txDepth, int errorFlags) {
-    this.destinationPort = port;
-    this.destinationWorld = world;
     this.world = world;
     this.port = port;
     this.rxDepth = rxDepth;

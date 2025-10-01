@@ -1,7 +1,7 @@
 package io.github.michael4d45;
 
 /** Frame carrying data from a remote IPv4 host. */
-public class FromIPv4Frame extends Frame {
+public class FromIPv4Frame extends Frame implements RoutedFrame {
 
   public final int dstWorld;
   public final int dstPort;
@@ -10,8 +10,6 @@ public class FromIPv4Frame extends Frame {
   private final int[] payload;
 
   public FromIPv4Frame(int dstWorld, int dstPort, byte[] srcIp, int srcPort, int[] payload) {
-    this.destinationPort = dstPort;
-    this.destinationWorld = dstWorld;
     this.dstWorld = dstWorld;
     this.dstPort = dstPort;
     this.srcIp = (srcIp == null) ? new byte[0] : srcIp.clone();
@@ -65,5 +63,15 @@ public class FromIPv4Frame extends Frame {
         java.util.Arrays.toString(srcIp),
         srcPort,
         java.util.Arrays.toString(payload));
+  }
+
+  @Override
+  public int getDstWorld() {
+    return dstWorld;
+  }
+
+  @Override
+  public int getDstPort() {
+    return dstPort;
   }
 }

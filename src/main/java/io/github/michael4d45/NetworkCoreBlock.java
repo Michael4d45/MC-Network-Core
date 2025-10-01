@@ -118,7 +118,7 @@ public class NetworkCoreBlock extends BlockWithEntity {
   @Override
   public void onStateReplaced(BlockState state, ServerWorld world, BlockPos pos, boolean moved) {
     if (!world.isClient) {
-      Router.getInstance().release(world, pos);
+      DataRouter.release(world, pos);
     }
     super.onStateReplaced(state, world, pos, moved);
   }

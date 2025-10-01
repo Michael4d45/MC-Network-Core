@@ -45,14 +45,14 @@ public class NetworkCoreEntity extends BlockEntity implements NamedScreenHandler
   }
 
   public int getWorldId() {
-    return Router.getWorldId((ServerWorld) this.world);
+    return DataRouter.getWorldId((ServerWorld) this.world);
   }
 
   public void setPort(int port) {
     if (!(this.world instanceof ServerWorld serverWorld)) {
       return;
     }
-    int assigned = Router.getInstance().requestPort(serverWorld, pos, port);
+    int assigned = DataRouter.requestPort(serverWorld, pos, port);
     NetworkCore.LOGGER.debug("Assigned port {} to Network Core at {}", assigned, pos);
     if (this.port != assigned) {
       this.port = assigned;
@@ -107,13 +107,13 @@ public class NetworkCoreEntity extends BlockEntity implements NamedScreenHandler
   public void handleLoad() {
     if (this.world instanceof ServerWorld serverWorld) {
       if (port >= 0) {
-        int assigned = Router.getInstance().registerExisting(serverWorld, pos, port);
+        int assigned = DataRouter.registerExisting(serverWorld, pos, port);
         if (assigned != port) {
           port = assigned; // adjust to resolved port
           markDirty();
         }
       } else {
-        int assigned = Router.getInstance().requestPort(serverWorld, pos, 0);
+        int assigned = DataRouter.requestPort(serverWorld, pos, 0);
         port = assigned;
         markDirty();
       }
@@ -123,7 +123,7 @@ public class NetworkCoreEntity extends BlockEntity implements NamedScreenHandler
   @Override
   public void markRemoved() {
     if (this.world instanceof ServerWorld serverWorld) {
-      Router.getInstance().release(serverWorld, pos);
+      DataRouter.release(serverWorld, pos);
     }
     super.markRemoved();
   }

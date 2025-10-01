@@ -21,46 +21,49 @@ import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.World;
 
 /** Manages unique port assignments per world. */
-public final class Router {
+public final class DataRouter {
 
   private static final int MIN_PORT = 0;
   private static final int MAX_PORT = 65535;
-  private static final Router INSTANCE = new Router();
 
   private static MinecraftServer server;
   private static final Map<Identifier, Integer> worldIds = new ConcurrentHashMap<>();
   private static int nextWorldId = 0;
 
-  private final Map<RegistryKey<World>, NetworkCorePortState> allocations =
+  // Per-world port allocation state
+  private static final Map<RegistryKey<World>, NetworkCorePortState> allocations =
       new ConcurrentHashMap<>();
 
-  private Router() {}
+  private DataRouter() {
+    // Utility class: prevent instantiation
+  }
 
   public static void init() {
     ServerLifecycleEvents.SERVER_STARTED.register(
-        server -> {
-          Router.server = server;
+        mcServer -> {
+          DataRouter.server = mcServer;
           loadWorldIds();
-          for (ServerWorld world : server.getWorlds()) {
+          for (ServerWorld world : mcServer.getWorlds()) {
             Identifier id = world.getRegistryKey().getValue();
             worldIds.computeIfAbsent(id, k -> nextWorldId++);
             NetworkCore.LOGGER.info("Assigned world ID {} to world {}", worldIds.get(id), id);
-            Router.loadState(world);
+            DataRouter.loadState(world);
           }
         });
     ServerLifecycleEvents.SERVER_STOPPING.register(
-        server -> {
+        mcServer -> {
           saveWorldIds();
-          for (ServerWorld world : server.getWorlds()) {
+          for (ServerWorld world : mcServer.getWorlds()) {
             NetworkCore.LOGGER.info(
                 "Requesting port save for world {}", world.getRegistryKey().getValue());
-            Router.saveState(world);
+            DataRouter.saveState(world);
           }
+          // Clear static state to avoid leakage across integrated server sessions
+          allocations.clear();
+          worldIds.clear();
+          nextWorldId = 0;
+          DataRouter.server = null;
         });
-  }
-
-  public static Router getInstance() {
-    return INSTANCE;
   }
 
   private static ServerWorld getWorldById(int id) {
@@ -77,20 +80,20 @@ public final class Router {
     return worldIds.getOrDefault(world.getRegistryKey().getValue(), -1);
   }
 
-  public void sendFrame(Frame frame) {
-    ServerWorld world = getWorldById(frame.destinationWorld);
+  public static void sendFrame(RoutedFrame frame) {
+    ServerWorld world = getWorldById(frame.getDstWorld());
     if (world == null) {
-      NetworkCore.LOGGER.warn("Cannot send frame, invalid world ID: " + frame.destinationWorld);
+      NetworkCore.LOGGER.warn("Cannot send frame, invalid world ID: " + frame.getDstWorld());
       return;
     }
-    NetworkCoreEntity be = getBlockEntityByPort(world, frame.destinationPort);
+    NetworkCoreEntity be = getBlockEntityByPort(world, frame.getDstPort());
     if (be != null) {
-      be.sendFrame(frame);
+      be.sendFrame((Frame) frame);
     } else {
       NetworkCore.LOGGER.warn(
           "Cannot send frame, no block found at world ID {} port {}",
-          frame.destinationWorld,
-          frame.destinationPort);
+          frame.getDstWorld(),
+          frame.getDstPort());
       NetworkCore.LOGGER.debug("Available worlds and ports:");
       for (var entry : worldIds.entrySet()) {
         NetworkCore.LOGGER.debug(" - World ID {}: {}", entry.getValue(), entry.getKey());
@@ -109,15 +112,15 @@ public final class Router {
     }
   }
 
-  public int registerExisting(ServerWorld world, BlockPos pos, int desiredPort) {
+  public static int registerExisting(ServerWorld world, BlockPos pos, int desiredPort) {
     return getAllocation(world).claim(pos, desiredPort);
   }
 
-  public int requestPort(ServerWorld world, BlockPos pos, int desiredPort) {
+  public static int requestPort(ServerWorld world, BlockPos pos, int desiredPort) {
     return getAllocation(world).reassign(pos, desiredPort);
   }
 
-  public NetworkCoreEntity getBlockEntityByPort(ServerWorld world, int port) {
+  public static NetworkCoreEntity getBlockEntityByPort(ServerWorld world, int port) {
     if (port < MIN_PORT || port > MAX_PORT) {
       return null;
     }
@@ -136,17 +139,17 @@ public final class Router {
     return null;
   }
 
-  public void release(ServerWorld world, BlockPos pos) {
+  public static void release(ServerWorld world, BlockPos pos) {
     getAllocation(world).release(pos);
   }
 
-  private NetworkCorePortState getAllocation(ServerWorld world) {
+  private static NetworkCorePortState getAllocation(ServerWorld world) {
     RegistryKey<World> key = world.getRegistryKey();
     return allocations.computeIfAbsent(key, k -> new NetworkCorePortState());
   }
 
   public static void saveState(ServerWorld world) {
-    NetworkCorePortState state = Router.getInstance().allocations.get(world.getRegistryKey());
+    NetworkCorePortState state = allocations.get(world.getRegistryKey());
     if (state != null) {
       Path path = getStateFile(world);
       try {
@@ -171,7 +174,7 @@ public final class Router {
       try {
         NbtCompound nbt = NbtIo.readCompressed(path, NbtSizeTracker.ofUnlimitedBytes());
         NetworkCorePortState state = NetworkCorePortState.fromNbt(nbt);
-        Router.getInstance().allocations.put(world.getRegistryKey(), state);
+        allocations.put(world.getRegistryKey(), state);
         if (migratedFromLegacy) {
           saveState(world);
           try {

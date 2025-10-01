@@ -36,8 +36,9 @@ public class CoreRuntime {
       NetworkCore.LOGGER.info("Committed frame: {}", result.committedFrame);
       // framing error count removed for now; could add metrics collection later
       switch (result.committedFrame) {
-        case DataFrame dataFrame -> Router.getInstance().sendFrame(dataFrame);
+        case RoutedFrame dataFrame -> DataRouter.sendFrame(dataFrame);
         case ControlFrame controlFrame -> processControlFrame(controlFrame, be);
+        case ToIPv4Frame toIPv4Frame -> IPv4Router.sendFrame(toIPv4Frame);
         default -> {}
       }
     }

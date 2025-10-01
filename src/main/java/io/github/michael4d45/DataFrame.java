@@ -1,7 +1,7 @@
 package io.github.michael4d45;
 
 /** Stub for DataFrame. */
-public class DataFrame extends Frame {
+public class DataFrame extends Frame implements RoutedFrame {
 
   public final int dstWorld;
   public final int dstPort;
@@ -10,8 +10,6 @@ public class DataFrame extends Frame {
   private final int[] payload;
 
   public DataFrame(int dstWorld, int dstPort, int srcWorld, int srcPort, int[] payload) {
-    this.destinationPort = dstPort;
-    this.destinationWorld = dstWorld;
     this.dstWorld = dstWorld;
     this.dstPort = dstPort;
     this.srcWorld = srcWorld;
@@ -35,6 +33,16 @@ public class DataFrame extends Frame {
     return String.format(
         "DataFrame{dstWorld=%d, dstPort=%d, srcWorld=%d, srcPort=%d, payload=%s}",
         dstWorld, dstPort, srcWorld, srcPort, java.util.Arrays.toString(payload));
+  }
+
+  @Override
+  public int getDstWorld() {
+    return dstWorld;
+  }
+
+  @Override
+  public int getDstPort() {
+    return dstPort;
   }
 
   @Override
