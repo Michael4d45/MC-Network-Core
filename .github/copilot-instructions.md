@@ -17,8 +17,8 @@ Keep assets internally consistent; missing model/texture pairs will render as ma
 - Item Model: `assets/network-core/models/item/network_core.json` referencing the block model.
 - Textures: All referenced textures present under `assets/network-core/textures/block/`.
 - Loot Table: `data/network-core/loot_tables/blocks/network_core.json` – drops itself; includes explosion survival predicate.
-- Lang: `assets/network-core/lang/en_us.json` includes block name & command feedback strings; GUI keys may be stubbed until UI implemented.
-- (Planned) GUI Screen: Not implemented yet. Current NetworkCoreEntity.createMenu returns null.
+- Lang: `assets/network-core/lang/en_us.json` includes block name & command feedback strings.
+- No GUI: Configuration occurs exclusively through control frames (SETPER, SETPORT) and commands.
 - Datapack Tests: `networkcore_test` functions kept in sync with protocol changes (update when frame formats evolve).
 
 ## Version Management
@@ -38,7 +38,7 @@ Before committing or releasing:
    - Transmit side reads neighbor redstone power (opposite facing)
    - Receive side emits power updates only when frame emission output changes
 4. Commands function (see Commands section) – especially `sendtest`, `pauseTickProcess`, `resumeTickProcess`, `listports`, `udpaddress`
-5. Protocol invariants: SOF=15, EOF=0, idle=0 upheld; Data (TYPE=0), Control (TYPE=1), IPv4 (TYPE=3) frames parse; Status (TYPE=2) intentionally not produced yet
+5. Protocol invariants: SOF=15, EOF=0, idle=0 upheld; Data(0), Control(1), Status(2), IPv4(3) frames parse
 6. Counters increment appropriately for framing errors, frames parsed/emitted, drops (verify via logs or temporary debug output)
 7. No missing resources (logs free of "missing model" / magenta blocks)
 8. World save/load cycle:
@@ -73,12 +73,6 @@ Before committing or releasing:
 - Keep operations synchronous & lightweight (server thread only).
 - Avoid unnecessary neighbor notifications during chunk population (defer until state actually changes at runtime).
 
-### Testing World Loading
-
-- Place multiple cores, assign custom symbol periods & ports if/when GUI implemented (currently manual/command-driven or internal).
-- Save & exit, reload world: verify assignments persist & no duplicate registration logs.
-- Simulate invalid/corrupt data by editing NBT (remove `Port` key) – core should request a new port safely.
-
 ### Prevention Checklist
 
 - [ ] Does this change affect block entity storage keys (`Port`, `SymbolPeriodTicks`)?
@@ -94,7 +88,7 @@ Before committing or releasing:
 - Max payload length: 255 nibbles (LEN=0xFF)
 - Idle line: continuous 0 nibbles; EOF also 0 (context distinguishes end vs idle)
 - SOF strictly 15; parser remains in IDLE until SOF observed
-- Control frames: MODEQ currently a no-op (no status frame returned) – future enhancement will emit Type 2.
+- Status frames (TYPE=2) emitted on MODEQ control frame; payload matches spec (signature + world + port + depths + flags).
 
 ## Commands (Developer / Testing)
 
@@ -118,16 +112,15 @@ Use pause/resume around datapack symbol sequences to avoid extraneous tick-drive
 ## Counters & Telemetry (Current Scope)
 
 - `txFramesParsed`
-- `txFramesDropped`
+- `txFramesDropped` (reserved; may remain zero without TX ring)
 - `rxFramesEmitted`
 - `txFramingErrors`
+- `rxOverflowDrops`
 
-Planned: `rxOverflowDrops`, `unroutableFrames`, `loopbackFrames`, error flag bitfield reporting via Status frames.
+Planned: `unroutableFrames`, `loopbackFrames`.
 
 ## Future Enhancements (Do Not Prematurely Implement Without Spec Alignment)
 
-- Status frame emission & MODEQ response
-- GUI screen (port & symbol period) with validation and server sync
 - Expanded error counters & user-facing diagnostics
 - Checksum or integrity nibble(s)
 - Cross-chunk routing and multi-hop forwarding
@@ -152,5 +145,3 @@ When implementing these, update README + protocol spec first to lock framing sem
 - Tests/Datapack: Updated scripts for any framing changes
 
 ---
-
-This guide reflects the current (no GUI, no status frame) state. Update sections above when implementing planned features to keep tooling & contributors aligned.

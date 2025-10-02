@@ -2,21 +2,14 @@ package io.github.michael4d45;
 
 import net.minecraft.block.BlockState;
 import net.minecraft.block.entity.BlockEntity;
-import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.entity.player.PlayerInventory;
-import net.minecraft.screen.NamedScreenHandlerFactory;
-import net.minecraft.screen.ScreenHandler;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.storage.ReadView;
 import net.minecraft.storage.WriteView;
-import net.minecraft.text.Text;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.World;
 
-import org.jetbrains.annotations.Nullable;
-
 /** Minimal stub block entity. */
-public class NetworkCoreEntity extends BlockEntity implements NamedScreenHandlerFactory {
+public class NetworkCoreEntity extends BlockEntity {
 
   private static final String PORT_KEY = "Port";
   private static final String SYMBOL_PERIOD_KEY = "SymbolPeriodTicks";
@@ -126,17 +119,6 @@ public class NetworkCoreEntity extends BlockEntity implements NamedScreenHandler
       DataRouter.release(serverWorld, pos);
     }
     super.markRemoved();
-  }
-
-  @Override
-  public Text getDisplayName() {
-    return Text.literal("Network Core");
-  }
-
-  @Nullable
-  @Override
-  public ScreenHandler createMenu(int syncId, PlayerInventory inv, PlayerEntity player) {
-    return null; // Stub: no UI yet
   }
 
   public static void tick(World world, BlockPos pos, BlockState state, NetworkCoreEntity be) {

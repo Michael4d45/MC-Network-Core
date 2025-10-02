@@ -7,7 +7,6 @@ import net.minecraft.block.entity.BlockEntity;
 import net.minecraft.block.entity.BlockEntityTicker;
 import net.minecraft.block.entity.BlockEntityType;
 import net.minecraft.entity.LivingEntity;
-import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.item.ItemPlacementContext;
 import net.minecraft.item.ItemStack;
 import net.minecraft.server.world.ServerWorld;
@@ -16,8 +15,6 @@ import net.minecraft.state.property.BooleanProperty;
 import net.minecraft.state.property.EnumProperty;
 import net.minecraft.state.property.IntProperty;
 import net.minecraft.state.property.Properties;
-import net.minecraft.util.ActionResult;
-import net.minecraft.util.hit.BlockHitResult;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Direction;
 import net.minecraft.world.BlockView;
@@ -184,19 +181,6 @@ public class NetworkCoreBlock extends BlockWithEntity {
   public <T extends BlockEntity> BlockEntityTicker<T> getTicker(
       World world, BlockState state, BlockEntityType<T> type) {
     return validateTicker(type, ModBlockEntities.NETWORK_CORE, NetworkCoreEntity::tick);
-  }
-
-  @Override
-  public ActionResult onUse(
-      BlockState state, World world, BlockPos pos, PlayerEntity player, BlockHitResult hit) {
-    if (world.isClient) {
-      return ActionResult.PASS;
-    }
-    BlockEntity blockEntity = world.getBlockEntity(pos);
-    if (blockEntity instanceof NetworkCoreEntity core) {
-      player.openHandledScreen(core);
-    }
-    return ActionResult.SUCCESS;
   }
 
   @Override
