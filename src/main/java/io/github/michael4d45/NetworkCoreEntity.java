@@ -144,8 +144,40 @@ public class NetworkCoreEntity extends BlockEntity implements NamedScreenHandler
       return;
     }
 
+    // Skip ticking when:
+    // 1. Explicitly paused via testing flag (be.paused)
+    // 2. Singleplayer pause menu is open (integrated server paused)
+    // 3. Global tick freeze is active (/tick freeze)
     if (be.paused) {
-      return; // Skip processing when paused for testing
+      return;
+    }
+
+    var server = serverWorld.getServer();
+    // Integrated server pause (singleplayer ESC menu) - server stops most ticks, this is an extra
+    // guard
+    if (server.isPaused()) {
+      return;
+    }
+
+    // Tick freeze (debug /tick freeze). Allow ticking when a step is being executed.
+    var tickManager = server.getTickManager();
+    // If the server is frozen AND not currently consuming a step tick, skip.
+    // (When stepping, the manager reports it should tick even while frozen.)
+    try {
+      // Use reflective/defensive call in case mappings differ; fall back to isFrozen only.
+      boolean shouldTick = true;
+      try {
+        shouldTick = (boolean) tickManager.getClass().getMethod("shouldTick").invoke(tickManager);
+      } catch (ReflectiveOperationException ignored) {
+        // If method absent, assume we should tick (so stepping still works) and only block when
+        // fully frozen.
+      }
+      if (tickManager.isFrozen() && !shouldTick) {
+        return;
+      }
+    } catch (RuntimeException t) {
+      // Fail open (continue ticking) to avoid breaking debug sessions if an unexpected runtime
+      // issue occurs.
     }
 
     int period = be.getSymbolPeriodTicks();

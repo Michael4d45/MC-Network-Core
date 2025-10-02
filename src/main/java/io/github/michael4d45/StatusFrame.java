@@ -16,7 +16,6 @@ public class StatusFrame extends Frame {
     this.errorFlags = errorFlags;
   }
 
-  @Override
   public int[] getPayload() {
     return new int[] {
       0xA, // signature

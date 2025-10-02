@@ -36,9 +36,9 @@ public class CoreRuntime {
       NetworkCore.LOGGER.info("Committed frame: {}", result.committedFrame);
       // framing error count removed for now; could add metrics collection later
       switch (result.committedFrame) {
+        case IPv4Frame ipv4Frame -> IPv4Router.sendFrame(ipv4Frame);
         case RoutedFrame dataFrame -> DataRouter.sendFrame(dataFrame);
         case ControlFrame controlFrame -> processControlFrame(controlFrame, be);
-        case ToIPv4Frame toIPv4Frame -> IPv4Router.sendFrame(toIPv4Frame);
         default -> {}
       }
     }
@@ -109,9 +109,6 @@ public class CoreRuntime {
           }
           if (port >= 0 && port <= 65535) {
             be.setPort(port);
-            int assignedPort = be.getPort();
-            NetworkCore.LOGGER.info(
-                "SETPORT control frame: requested {} assigned {}", port, assignedPort);
           } else {
             NetworkCore.LOGGER.warn("SETPORT control frame: port {} out of range 0-65535", port);
           }

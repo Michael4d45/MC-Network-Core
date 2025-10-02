@@ -1,14 +1,11 @@
-# Simple To IPv4 frame with no payload
-# SOF=15 (Start of Frame), TYPE=3 (To IPv4), SRC_WORLD_HI=0, SRC_WORLD_LO=0 (World=0), SRC_PORT_HI_HI=0, SRC_PORT_HI_LO=0, SRC_PORT_LO_HI=1, SRC_PORT_LO_LO=2 (Port=18), DST_IP_N0=C, DST_IP_N1=0, DST_IP_N2=A, DST_IP_N3=8, DST_IP_N4=0, DST_IP_N5=1, DST_IP_N6=0, DST_IP_N7=A (IP=192.168.1.10), DST_PORT_HI_HI=0, DST_PORT_HI_LO=0, DST_PORT_LO_HI=3, DST_PORT_LO_LO=4 (Port=52), LEN_HI=0, LEN_LO=0 (Length=0), EOF=0 (End of Frame)
-# SRC_PORT = 18, DST_IP = 192.168.1.10, DST_PORT = 52, PAYLOAD = []
+# Simple IPv4 frame to external host with no payload
+# SOF=15 (Start of Frame), TYPE=3 (IPv4), DST_IP=12,0,10,8,0,1,0,10 (192.168.1.10), DST_UDP_PORT=0,0,3,4 (52), DST_WORLD=0,0 (0), DST_PORT=0,0,2,10 (42), SRC_IP=7,15,0,0,0,0,0,1 (127.0.0.1), SRC_UDP_PORT=3,0,3,9 (12345), SRC_WORLD=0,0 (0), SRC_PORT=0,0,1,2 (18), LEN=0,0 (0), EOF=0 (End of Frame)
+# DST_IP = 192.168.1.10, DST_UDP_PORT = 52, SRC_PORT = 18, PAYLOAD = []
+# SOF
 networkcore sendtest 15
+# TYPE
 networkcore sendtest 3
-networkcore sendtest 0
-networkcore sendtest 0
-networkcore sendtest 0
-networkcore sendtest 0
-networkcore sendtest 1
-networkcore sendtest 2
+# DST_IP
 networkcore sendtest 12
 networkcore sendtest 0
 networkcore sendtest 10
@@ -17,10 +14,45 @@ networkcore sendtest 0
 networkcore sendtest 1
 networkcore sendtest 0
 networkcore sendtest 10
+# DST_UDP_PORT
 networkcore sendtest 0
 networkcore sendtest 0
 networkcore sendtest 3
 networkcore sendtest 4
+# DST_WORLD
 networkcore sendtest 0
 networkcore sendtest 0
+# DST_PORT
+networkcore sendtest 0
+networkcore sendtest 0
+networkcore sendtest 2
+networkcore sendtest 10
+# SRC_IP
+networkcore sendtest 0
+networkcore sendtest 0
+networkcore sendtest 7
+networkcore sendtest 15
+networkcore sendtest 0
+networkcore sendtest 0
+networkcore sendtest 0
+networkcore sendtest 0
+networkcore sendtest 0
+networkcore sendtest 1
+# SRC_UDP_PORT
+networkcore sendtest 3
+networkcore sendtest 0
+networkcore sendtest 3
+networkcore sendtest 9
+# SRC_WORLD
+networkcore sendtest 0
+networkcore sendtest 0
+# SRC_PORT
+networkcore sendtest 0
+networkcore sendtest 0
+networkcore sendtest 1
+networkcore sendtest 2
+# LEN
+networkcore sendtest 0
+networkcore sendtest 0
+# EOF
 networkcore sendtest 0

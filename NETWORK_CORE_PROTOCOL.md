@@ -34,25 +34,16 @@ Provide a deterministic, NIC-inspired redstone-to-packet mediation layer with:
 ```
 SOF (15)
 TYPE (0)
-DST_WORLD_HI (0–15)
-DST_WORLD_LO (0–15)
-DST_PORT_HI_HI (0–15)
-DST_PORT_HI_LO (0–15)
-DST_PORT_LO_HI (0–15)
-DST_PORT_LO_LO (0–15)
-SRC_WORLD_HI (0–15)
-SRC_WORLD_LO (0–15)
-SRC_PORT_HI_HI (0–15)
-SRC_PORT_HI_LO (0–15)
-SRC_PORT_LO_HI (0–15)
-SRC_PORT_LO_LO (0–15)
-LEN_HI (0–15)
-LEN_LO (0–15)
+DST_WORLD (2x0–15)
+DST_PORT (4x0–15)
+SRC_WORLD (2x0–15)
+SRC_PORT (4x0–15)
+LEN (2x0–15)
 PAYLOAD[0..P-1]
 EOF (0)
 ```
 
-- Header = 15 nibbles (TYPE, DST_WORLD_HI, DST_WORLD_LO, DST_PORT_HI_HI, DST_PORT_HI_LO, DST_PORT_LO_HI, DST_PORT_LO_LO, SRC_WORLD_HI, SRC_WORLD_LO, SRC_PORT_HI_HI, SRC_PORT_HI_LO, SRC_PORT_LO_HI, SRC_PORT_LO_LO, LEN_HI, LEN_LO)
+- Header = 15 nibbles (TYPE + 14 data nibbles)
 - Payload Length = (LEN_HI << 4) | LEN_LO = number of payload nibbles.
 - Minimum valid Payload Length = 0.
 
@@ -89,27 +80,17 @@ EOF (0)
 
 ### Step 3. Frame on the wire
 
-| Symbol         | Hex | Decimal | Meaning                                         |
-| -------------- | --- | ------- | ----------------------------------------------- |
-| SOF            | 0xF | 15      | Start of Frame                                  |
-| TYPE           | 0x0 | 0       | Frame Type (0 = Data)                           |
-| DST_WORLD_HI   | 0x0 | 0       | Destination world high nibble                   |
-| DST_WORLD_LO   | 0x0 | 0       | Destination world low nibble → 0x00 = overworld |
-| DST_PORT_HI_HI | 0x0 | 0       | Destination port high-high nibble               |
-| DST_PORT_HI_LO | 0x0 | 0       | Destination port high-low nibble                |
-| DST_PORT_LO_HI | 0x3 | 3       | Destination port low-high nibble                |
-| DST_PORT_LO_LO | 0x4 | 4       | Destination port low-low nibble → 0x0034 = 52   |
-| SRC_WORLD_HI   | 0x0 | 0       | Source world high nibble                        |
-| SRC_WORLD_LO   | 0x0 | 0       | Source world low nibble → 0x00 = overworld      |
-| SRC_PORT_HI_HI | 0x0 | 0       | Source port high-high nibble                    |
-| SRC_PORT_HI_LO | 0x0 | 0       | Source port high-low nibble                     |
-| SRC_PORT_LO_HI | 0x1 | 1       | Source port low-high nibble                     |
-| SRC_PORT_LO_LO | 0x2 | 2       | Source port low-low nibble → 0x0012 = 18        |
-| LEN_HI         | 0x0 | 0       | Payload length high nibble                      |
-| LEN_LO         | 0x2 | 2       | Payload length low nibble → Payload length = 2  |
-| PAY0           | 0xA | 10      | Payload nibble 0                                |
-| PAY1           | 0xB | 11      | Payload nibble 1                                |
-| EOF            | 0x0 | 0       | End of Frame                                    |
+| Field     | Nibbles | Hex                | Decimal    | Meaning                                          |
+| --------- | ------- | ------------------ | ---------- | ------------------------------------------------ |
+| SOF       | -       | 0xF                | 15         | Start of Frame                                   |
+| TYPE      | 0       | 0x0                | 0          | Frame Type (0 = Data)                            |
+| DST_WORLD | 1-2     | 0x0, 0x0           | 0, 0       | Destination world (2 nibbles) → 0x00 = overworld |
+| DST_PORT  | 3-6     | 0x0, 0x0, 0x3, 0x4 | 0, 0, 3, 4 | Destination port (4 nibbles) → 0x0034 = 52       |
+| SRC_WORLD | 7-8     | 0x0, 0x0           | 0, 0       | Source world (2 nibbles) → 0x00 = overworld      |
+| SRC_PORT  | 9-12    | 0x0, 0x0, 0x1, 0x2 | 0, 0, 1, 2 | Source port (4 nibbles) → 0x0012 = 18            |
+| LEN       | 13-14   | 0x0, 0x2           | 0, 2       | Payload length (2 nibbles) → length = 2          |
+| PAYLOAD   | 15-16   | 0xA, 0xB           | 10, 11     | Payload nibbles                                  |
+| EOF       | -       | 0x0                | 0          | End of Frame                                     |
 
 ---
 
@@ -132,9 +113,9 @@ Control frames are identified by TYPE = 1. The frame structure is:
 ```
 SOF (15)
 TYPE (1)
+OP (0–14)
 LEN_HI (0–15)
 LEN_LO (0–15)
-OP (0–14)
 ARG[...] (LEN - 1 nibbles)
 EOF (0)
 ```
@@ -171,9 +152,9 @@ Opcodes:
 ```
 15   (SOF)
 1    (TYPE = 1 → Control)
-0    (LEN_HI)
-6    (LEN_LO = 6)
 4    (OP = SETPORT)
+0    (LEN_HI)
+4    (LEN_LO = 4)
 0    (ARG[0] = high-high nibble = 0x0)
 0    (ARG[1] = high-low nibble = 0x0)
 2    (ARG[2] = low-high nibble = 0x2)
@@ -187,27 +168,13 @@ A    (ARG[3] = low-low nibble = 0xA)
 
 - **SOF (15):** Marks start of frame
 - **TYPE = 1:** Control frame
-- **LEN = 6:** Payload length = 6 nibbles (OP + 4 ARG)
 - **OP = 4:** The SETPORT opcode
+- **LEN = 4:** Payload length = 4 nibbles (OP + 4 ARG)
 - **ARG[0] = 0x0:** High-high nibble of the port number
 - **ARG[1] = 0x0:** High-low nibble of the port number
 - **ARG[2] = 0x2:** Low-high nibble of the port number
 - **ARG[3] = 0xA:** Low-low nibble of the port number
 - **EOF (0):** Frame terminator
-
----
-
-### Notes
-
-- If you only wanted to set a port ≤ 15 (fits in one nibble), LEN = 2, omit `ARG[0]`, `ARG[1]`, `ARG[2]`.
-- For example, port `0x7` would be:
-
-  ```
-  15, 1, 0,2, 4,7, 0
-  ```
-
-- For ports ≤ 255 (fits in two nibbles), LEN = 3, omit `ARG[0]`, `ARG[1]`.
-- For ports ≤ 4095 (fits in three nibbles), LEN = 4, omit `ARG[0]`.
 
 ---
 
@@ -235,136 +202,47 @@ EOF (0)
 
 ---
 
-### 3.4 To IPv4 Frame (TYPE=3)
+### 3.4 IPv4 Frame (TYPE=3)
 
-Outbound frame from local NIC to remote IPv4 host. Includes source addressing and destination IP/port.
+Inbound and outbound frame between local NIC and remote IPv4 host.
 
 Structure:
 
 ```
 SOF (15)
 TYPE (3)
-SRC_WORLD_HI (0–15)
-SRC_WORLD_LO (0–15)
-SRC_PORT_HI_HI (0–15)
-SRC_PORT_HI_LO (0–15)
-SRC_PORT_LO_HI (0–15)
-SRC_PORT_LO_LO (0–15)
-DST_IP_N0 (0–15)
-DST_IP_N1 (0–15)
-DST_IP_N2 (0–15)
-DST_IP_N3 (0–15)
-DST_IP_N4 (0–15)
-DST_IP_N5 (0–15)
-DST_IP_N6 (0–15)
-DST_IP_N7 (0–15)
-DST_PORT_HI_HI (0–15)
-DST_PORT_HI_LO (0–15)
-DST_PORT_LO_HI (0–15)
-DST_PORT_LO_LO (0–15)
-LEN_HI (0–15)
-LEN_LO (0–15)
+DST_IP (8x0–15)
+DST_UDP_PORT (4x0–15)
+DST_WORLD (2x0–15)
+DST_PORT (4x0–15)
+SRC_IP (8x0–15)
+SRC_UDP_PORT (4x0–15)
+SRC_WORLD (2x0–15)
+SRC_PORT (4x0–15)
+LEN (2x0–15)
 PAYLOAD[0..P-1] (LEN nibbles)
 EOF (0)
 ```
 
-- Header = 21 nibbles (TYPE, SRC_WORLD_HI, SRC_WORLD_LO, SRC_PORT_HI_HI, SRC_PORT_HI_LO, SRC_PORT_LO_HI, SRC_PORT_LO_LO, DST_IP_N0..N7, DST_PORT_HI_HI, DST_PORT_HI_LO, DST_PORT_LO_HI, DST_PORT_LO_LO, LEN_HI, LEN_LO)
+- Header = 39 nibbles (TYPE + 38 data nibbles)
 - Payload Length = (LEN_HI << 4) | LEN_LO = number of payload nibbles.
 - IPv4 address = 4 bytes (8 nibbles), high nibble first per byte.
+- Direction determined by context: outbound when sent from redstone, inbound when received from IPv4Router.
 
-Example: To 192.168.1.10 port 52 from world 0 port 18 with payload [10, 11]
+Example: IPv4 frame from 192.168.1.10:18 to world 0 port 52 UDP port 0 with payload [10, 11]
 
 ```
 SOF: 15
 TYPE: 3
-SRC_WORLD_HI: 0
-SRC_WORLD_LO: 0
-SRC_PORT_HI_HI: 0
-SRC_PORT_HI_LO: 0
-SRC_PORT_LO_HI: 1
-SRC_PORT_LO_LO: 2
-DST_IP_N0: C
-DST_IP_N1: 0
-DST_IP_N2: A
-DST_IP_N3: 8
-DST_IP_N4: 0
-DST_IP_N5: 1
-DST_IP_N6: 0
-DST_IP_N7: A
-DST_PORT_HI_HI: 0
-DST_PORT_HI_LO: 0
-DST_PORT_LO_HI: 3
-DST_PORT_LO_LO: 4
-LEN_HI: 0
-LEN_LO: 2
-PAYLOAD: A, B
-EOF: 0
-```
-
----
-
-### 3.5 From IPv4 Frame (TYPE=4)
-
-Inbound frame from remote IPv4 host to local NIC. Includes destination addressing and source IP/port.
-
-Structure:
-
-```
-SOF (15)
-TYPE (4)
-DST_WORLD_HI (0–15)
-DST_WORLD_LO (0–15)
-DST_PORT_HI_HI (0–15)
-DST_PORT_HI_LO (0–15)
-DST_PORT_LO_HI (0–15)
-DST_PORT_LO_LO (0–15)
-SRC_IP_N0 (0–15)
-SRC_IP_N1 (0–15)
-SRC_IP_N2 (0–15)
-SRC_IP_N3 (0–15)
-SRC_IP_N4 (0–15)
-SRC_IP_N5 (0–15)
-SRC_IP_N6 (0–15)
-SRC_IP_N7 (0–15)
-SRC_PORT_HI_HI (0–15)
-SRC_PORT_HI_LO (0–15)
-SRC_PORT_LO_HI (0–15)
-SRC_PORT_LO_LO (0–15)
-LEN_HI (0–15)
-LEN_LO (0–15)
-PAYLOAD[0..P-1] (LEN nibbles)
-EOF (0)
-```
-
-- Header = 21 nibbles (TYPE, DST_WORLD_HI, DST_WORLD_LO, DST_PORT_HI_HI, DST_PORT_HI_LO, DST_PORT_LO_HI, DST_PORT_LO_LO, SRC_IP_N0..N7, SRC_PORT_HI_HI, SRC_PORT_HI_LO, SRC_PORT_LO_HI, SRC_PORT_LO_LO, LEN_HI, LEN_LO)
-- Payload Length = (LEN_HI << 4) | LEN_LO = number of payload nibbles.
-- IPv4 address = 4 bytes (8 nibbles), high nibble first per byte.
-
-Example: From 192.168.1.10 port 18 to world 0 port 52 with payload [10, 11]
-
-```
-SOF: 15
-TYPE: 4
-DST_WORLD_HI: 0
-DST_WORLD_LO: 0
-DST_PORT_HI_HI: 0
-DST_PORT_HI_LO: 0
-DST_PORT_LO_HI: 3
-DST_PORT_LO_LO: 4
-SRC_IP_N0: C
-SRC_IP_N1: 0
-SRC_IP_N2: A
-SRC_IP_N3: 8
-SRC_IP_N4: 0
-SRC_IP_N5: 1
-SRC_IP_N6: 0
-SRC_IP_N7: A
-SRC_PORT_HI_HI: 0
-SRC_PORT_HI_LO: 0
-SRC_PORT_LO_HI: 1
-SRC_PORT_LO_LO: 2
-LEN_HI: 0
-LEN_LO: 2
+DST_IP: C, 0, A, 8, 0, 1, 0, A
+DST_UDP_PORT: 0, 0, 0, 0
+DST_WORLD: 0, 0
+DST_PORT: 0, 0, 3, 4
+SRC_IP: 0, 0, 0, 0, 0, 0, 0, 0
+SRC_UDP_PORT: 0, 0, 0, 0
+SRC_WORLD: 0, 0
+SRC_PORT: 0, 0, 1, 2
+LEN: 0, 2
 PAYLOAD: A, B
 EOF: 0
 ```
@@ -376,9 +254,8 @@ EOF: 0
 ```
 IDLE: expect SOF=15. Else stay.
 TYPE: read TYPE.
-If TYPE=0: collect DST_WORLD/DST_WORLD/DST_PORT_HI_HI/DST_PORT_HI_LO/DST_PORT_LO_HI/DST_PORT_LO_LO/SRC_WORLD/SRC_WORLD/SRC_PORT_HI_HI/SRC_PORT_HI_LO/SRC_PORT_LO_HI/SRC_PORT_LO_LO (14 nibbles).
-If TYPE=3: collect SRC_WORLD/SRC_WORLD/SRC_PORT_HI_HI/SRC_PORT_HI_LO/SRC_PORT_LO_HI/SRC_PORT_LO_LO/DST_IP_N0..N7/DST_PORT_HI_HI/DST_PORT_HI_LO/DST_PORT_LO_HI/DST_PORT_LO_LO (20 nibbles).
-If TYPE=4: collect DST_WORLD/DST_WORLD/DST_PORT_HI_HI/DST_PORT_HI_LO/DST_PORT_LO_HI/DST_PORT_LO_LO/SRC_IP_N0..N7/SRC_PORT_HI_HI/SRC_PORT_HI_LO/SRC_PORT_LO_HI/SRC_PORT_LO_LO (20 nibbles).
+If TYPE=0: collect 14 nibbles (DST_WORLD, DST_PORT, SRC_WORLD, SRC_PORT, LEN).
+If TYPE=3: collect 38 nibbles (DST_IP, DST_UDP_PORT, DST_WORLD, DST_PORT, SRC_IP, SRC_UDP_PORT, SRC_WORLD, SRC_PORT, LEN).
 LEN: read LEN_HI + LEN_LO → Payload Length.
 DATA: collect payload (LEN nibbles). If SOF before done → ERROR.
 EOF: require 0. Else → ERROR. On success → COMMIT.
@@ -442,14 +319,14 @@ Bitfield:
 
 ## 9. Design Decisions
 
-| Aspect                 | Decision                                                                        |
-| ---------------------- | ------------------------------------------------------------------------------- |
-| EOF Handling           | Exactly one 0 nibble terminates frame. Idle = constant 0.                       |
-| Max Frame Length       | 255 payload nibbles (LEN=255)                                                   |
-| Frame Types            | 0=Data (with addresses), 1=Control, 2=Status (proposed), 3=To IPv4, 4=From IPv4 |
-| Symbol Period          | Default 2 ticks, range 1–8                                                      |
-| Overflow               | Drop newest frame, increment counter                                            |
-| Status Frame Signature | First nibble = 0xA                                                              |
-| Port Header            | DST_WORLD + DST_PORT (16 bits) + SRC_WORLD + SRC_PORT (16 bits)                 |
-| RESET Behavior         | Flush TX, RX, clear error flags (counters remain unless STATSCLR)               |
-| Noise Recovery         | Invalid sequence → ERROR → require ≥1 idle nibble (0) → IDLE                    |
+| Aspect | Decision |
+| --- | --- |
+| EOF Handling | Exactly one 0 nibble terminates frame. Idle = constant 0. |
+| Max Frame Length | 255 payload nibbles (LEN=255) |
+| Frame Types | 0=Data (with addresses), 1=Control, 2=Status (proposed), 3=IPv4 |
+| Symbol Period | Default 2 ticks, range 1–8 |
+| Overflow | Drop newest frame, increment counter |
+| Status Frame Signature | First nibble = 0xA |
+| Port Header | DST_WORLD + DST_PORT (16 bits) + SRC_WORLD + SRC_PORT (16 bits) for Data frames; IPv4 frames include additional UDP ports |
+| RESET Behavior | Flush TX, RX, clear error flags (counters remain unless STATSCLR) |
+| Noise Recovery | Invalid sequence → ERROR → require ≥1 idle nibble (0) → IDLE |

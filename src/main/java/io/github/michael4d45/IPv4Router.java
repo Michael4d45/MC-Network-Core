@@ -12,13 +12,11 @@ import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 public class IPv4Router {
 
   private static final int UDP_PORT_START = 12345;
-  private static final int DST_WORLD = 0; // Overworld
 
   private static DatagramSocket socket;
   private static Thread receiveThread;
   private static volatile boolean running = false;
   private static int udpPort;
-  private static int dstPort;
   private static InetAddress localAddress;
 
   public static void init() {
@@ -29,7 +27,6 @@ public class IPv4Router {
             try {
               socket = new DatagramSocket(port);
               udpPort = port;
-              dstPort = port;
               localAddress = socket.getLocalAddress();
               NetworkCore.LOGGER.info("IPv4Router listening on UDP port {}", udpPort);
               running = true;
@@ -59,18 +56,18 @@ public class IPv4Router {
         });
   }
 
-  public static void sendFrame(ToIPv4Frame frame) {
+  public static void sendFrame(IPv4Frame frame) {
     if (socket == null) {
       NetworkCore.LOGGER.warn("IPv4Router not initialized, cannot send frame");
       return;
     }
     try {
-      byte[] data = nibblesToBytes(frame.getPayload());
+      byte[] data = nibblesToBytes(frame.buildSymbols());
       InetAddress address = InetAddress.getByAddress(frame.getDstIp());
-      DatagramPacket packet = new DatagramPacket(data, data.length, address, frame.dstPort);
+      DatagramPacket packet = new DatagramPacket(data, data.length, address, frame.dstUdpPort);
       socket.send(packet);
       NetworkCore.LOGGER.info(
-          "Sent UDP packet to {}:{} with {} bytes", address, frame.dstPort, data.length);
+          "Sent UDP packet to {}:{} with {} bytes", address, frame.dstUdpPort, data.length);
     } catch (IOException e) {
       NetworkCore.LOGGER.error("Failed to send UDP packet", e);
     }
@@ -83,21 +80,22 @@ public class IPv4Router {
         DatagramPacket packet = new DatagramPacket(buffer, buffer.length);
         socket.receive(packet);
         byte[] data = Arrays.copyOf(packet.getData(), packet.getLength());
-        handleIncomingFrame(packet.getAddress().getAddress(), packet.getPort(), data);
+
+        byte[] srcIp = packet.getAddress().getAddress();
+        int srcPort = packet.getPort();
+        IPv4Frame frame = IPv4Frame.fromSymbols(bytesToNibbles(data));
+        NetworkCore.LOGGER.info(
+            "Received UDP packet from {}:{}, sending frame {}",
+            Arrays.toString(srcIp),
+            srcPort,
+            frame);
+        DataRouter.server.execute(() -> DataRouter.sendFrame(frame));
       } catch (IOException e) {
         if (running) {
           NetworkCore.LOGGER.error("Error receiving UDP packet", e);
         }
       }
     }
-  }
-
-  private static void handleIncomingFrame(byte[] srcIp, int srcPort, byte[] data) {
-    int[] payload = bytesToNibbles(data);
-    FromIPv4Frame frame = new FromIPv4Frame(DST_WORLD, dstPort, srcIp, srcPort, payload);
-    NetworkCore.LOGGER.info(
-        "Received UDP packet from {}:{}, sending frame {}", Arrays.toString(srcIp), srcPort, frame);
-    DataRouter.sendFrame(frame);
   }
 
   private static byte[] nibblesToBytes(int[] nibbles) {

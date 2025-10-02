@@ -78,7 +78,7 @@ public class NetworkCore implements ModInitializer {
   }
 
   private static void registerCommands(CommandDispatcher<ServerCommandSource> dispatcher) {
-    dispatcher.register(
+    var root =
         CommandManager.literal("networkcore")
             .then(
                 CommandManager.literal("sendtest")
@@ -166,7 +166,49 @@ public class NetworkCore implements ModInitializer {
                                   "UDP address for sending packets: "
                                       + IPv4Router.getUdpAddress()));
                           return 1;
-                        })));
+                        }))
+            .then(
+                CommandManager.literal("listports")
+                    .executes(
+                        context -> {
+                          ServerCommandSource source = context.getSource();
+                          source.sendMessage(Text.literal("Listing all allocated ports:"));
+                          for (var world : source.getServer().getWorlds()) {
+                            var ports = DataRouter.getAllocatedPorts(world);
+                            if (!ports.isEmpty()) {
+                              source.sendMessage(
+                                  Text.literal("World: " + world.getRegistryKey().getValue()));
+                              for (var entry : ports.entrySet()) {
+                                BlockPos pos = entry.getKey();
+                                int port = entry.getValue();
+                                source.sendMessage(Text.literal("  Port " + port + " at " + pos));
+                              }
+                            }
+                          }
+                          source.sendMessage(Text.literal("End of port list."));
+                          return 1;
+                        }))
+            .then(
+                CommandManager.literal("help")
+                    .executes(
+                        ctx -> {
+                          ServerCommandSource src = ctx.getSource();
+                          src.sendMessage(
+                              Text.literal(
+                                  "NetworkCore commands:\n"
+                                      + "/networkcore sendtest <0-15> - send a symbol to nearest core\n"
+                                      + "/networkcore pauseTickProcess - pause nearest core processing\n"
+                                      + "/networkcore resumeTickProcess - resume nearest core processing\n"
+                                      + "/networkcore udpaddress - show UDP address for packets\n"
+                                      + "/networkcore listports - list allocated ports\n"
+                                      + "/networkcore help - show this help"));
+                          return 1;
+                        }));
+
+    // Register the root and a short alias /nc redirecting to it.
+    dispatcher.register(root);
+    dispatcher.register(
+        CommandManager.literal("nc").redirect(dispatcher.getRoot().getChild("networkcore")));
   }
 
   private static NetworkCoreEntity findNearestNetworkCore(ServerPlayerEntity player) {

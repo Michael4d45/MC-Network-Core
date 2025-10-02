@@ -3,6 +3,7 @@ package io.github.michael4d45;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -26,7 +27,7 @@ public final class DataRouter {
   private static final int MIN_PORT = 0;
   private static final int MAX_PORT = 65535;
 
-  private static MinecraftServer server;
+  public static MinecraftServer server;
   private static final Map<Identifier, Integer> worldIds = new ConcurrentHashMap<>();
   private static int nextWorldId = 0;
 
@@ -143,6 +144,10 @@ public final class DataRouter {
     getAllocation(world).release(pos);
   }
 
+  public static Map<BlockPos, Integer> getAllocatedPorts(ServerWorld world) {
+    return new HashMap<>(getAllocation(world).byPos);
+  }
+
   private static NetworkCorePortState getAllocation(ServerWorld world) {
     RegistryKey<World> key = world.getRegistryKey();
     return allocations.computeIfAbsent(key, k -> new NetworkCorePortState());
@@ -151,6 +156,16 @@ public final class DataRouter {
   public static void saveState(ServerWorld world) {
     NetworkCorePortState state = allocations.get(world.getRegistryKey());
     if (state != null) {
+      // Log all blocks being saved
+      for (var entry : state.byPos.entrySet()) {
+        BlockPos pos = entry.getKey();
+        int port = entry.getValue();
+        NetworkCore.LOGGER.info(
+            "Saving block at {} with port {} for world {}",
+            pos,
+            port,
+            world.getRegistryKey().getValue());
+      }
       Path path = getStateFile(world);
       try {
         Files.createDirectories(path.getParent());
@@ -175,6 +190,16 @@ public final class DataRouter {
         NbtCompound nbt = NbtIo.readCompressed(path, NbtSizeTracker.ofUnlimitedBytes());
         NetworkCorePortState state = NetworkCorePortState.fromNbt(nbt);
         allocations.put(world.getRegistryKey(), state);
+        // Log all blocks that were loaded
+        for (var entry : state.byPos.entrySet()) {
+          BlockPos pos = entry.getKey();
+          int port = entry.getValue();
+          NetworkCore.LOGGER.info(
+              "Loaded block at {} with port {} for world {}",
+              pos,
+              port,
+              world.getRegistryKey().getValue());
+        }
         if (migratedFromLegacy) {
           saveState(world);
           try {
