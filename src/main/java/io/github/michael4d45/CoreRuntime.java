@@ -11,6 +11,20 @@ public class CoreRuntime {
   RxRuntime egress = new RxRuntime();
   Queue<Frame> rxQueue = new LinkedList<>(); // frames waiting for egress
 
+  // Capacity for RX queue (frames pending emission). Status frames, routed frames, IPv4 frames
+  // all share this. Drops increment overflow counter / bit.
+  private static final int RX_QUEUE_CAPACITY = 64;
+
+  // Telemetry counters (server-thread only, no sync needed)
+  long txFramesParsed = 0; // successfully parsed ingress frames (data/control/ipv4)
+  long txFramesDropped = 0; // would be used if we had a bounded TX ring (currently unused)
+  long txFramingErrors = 0; // framing errors encountered by parser
+  long rxFramesEmitted = 0; // frames fully emitted on egress
+  long rxOverflowDrops = 0; // frames dropped because RX queue full
+
+  // Cached last computed error flags bitfield (bit0 RX_OVERFLOW, bit1 TX_FRAMING_ERR)
+  private int errorFlagsBitfield = 0;
+
   public void processTxSymbol(NetworkCoreEntity be, int transmitPower) {
     TxFramerStateMachine.State prevState = ingress.state;
     TxFramerStateMachine.Result result =
@@ -41,6 +55,10 @@ public class CoreRuntime {
         case ControlFrame controlFrame -> processControlFrame(controlFrame, be);
         default -> {}
       }
+      txFramesParsed++;
+    }
+    if (result.errorIncremented) {
+      txFramingErrors++;
     }
   }
 
@@ -71,16 +89,7 @@ public class CoreRuntime {
       {
         int port = be.getPort();
         int worldId = be.getWorldId();
-        int rxDepth = Math.min(rxQueue.size(), 13);
-        int txDepth = 0; // No TX queue implemented yet
-        int errorFlags = 0; // No error counters implemented yet
-        StatusFrame statusFrame = new StatusFrame(worldId, port, rxDepth, txDepth, errorFlags);
-        if (rxQueue.size() < 10) {
-          rxQueue.add(statusFrame);
-          NetworkCore.LOGGER.info("Queued status frame for RX");
-        } else {
-          NetworkCore.LOGGER.warn("RX queue full, cannot queue status frame");
-        }
+        queueStatusFrame(worldId, port);
       }
 
       case 0x3 -> {
@@ -119,13 +128,23 @@ public class CoreRuntime {
       }
 
       case 0x5 -> // STATSCLR - Clear counters
-          NetworkCore.LOGGER.info("STATSCLR control frame processed");
+      {
+        txFramesParsed = 0;
+        txFramesDropped = 0;
+        txFramingErrors = 0;
+        rxFramesEmitted = 0;
+        rxOverflowDrops = 0;
+        recomputeErrorFlags();
+        NetworkCore.LOGGER.info("STATSCLR control frame processed");
+      }
 
       default -> NetworkCore.LOGGER.warn("Unknown control frame opcode {}", controlFrame.opcode);
     }
   }
 
   public void processRxOutput() {
+    RxEmitterStateMachine.State previousState = egress.state;
+    Frame previousFrame = egress.currentFrame;
     RxEmitterStateMachine.Result result =
         RxEmitterStateMachine.process(
             egress.state, egress.currentFrame, egress.symbols, egress.position, rxQueue);
@@ -155,6 +174,13 @@ public class CoreRuntime {
     } else {
       egress.lastOutputPower = 0;
     }
+    // Count frame emission when we transition from OUTPUTTING to IDLE having previously had a
+    // frame.
+    if (previousState == RxEmitterStateMachine.State.OUTPUTTING
+        && result.newState == RxEmitterStateMachine.State.IDLE
+        && previousFrame != null) {
+      rxFramesEmitted++;
+    }
   }
 
   public int getLastOutputPower() {
@@ -165,8 +191,70 @@ public class CoreRuntime {
     if (frame == null) {
       return;
     }
+    if (rxQueue.size() >= RX_QUEUE_CAPACITY) {
+      rxOverflowDrops++;
+      recomputeErrorFlags();
+      NetworkCore.LOGGER.warn("RX queue full ({}), dropping frame {}", RX_QUEUE_CAPACITY, frame);
+      return;
+    }
     rxQueue.add(frame);
     NetworkCore.LOGGER.debug("Queued frame for egress, queue size now {}", rxQueue.size());
+  }
+
+  private void queueStatusFrame(int worldId, int port) {
+    int rxDepth = Math.min(rxQueue.size(), 13);
+    int txDepth = 0; // No TX queue yet
+    recomputeErrorFlags();
+    StatusFrame statusFrame =
+        new StatusFrame(worldId, port, rxDepth, txDepth, errorFlagsBitfield & 0xF);
+    if (rxQueue.size() >= RX_QUEUE_CAPACITY) {
+      rxOverflowDrops++;
+      recomputeErrorFlags();
+      NetworkCore.LOGGER.warn("RX queue full, cannot queue status frame");
+      return;
+    }
+    rxQueue.add(statusFrame);
+    NetworkCore.LOGGER.info("Queued status frame for RX (port={}, world={})", port, worldId);
+  }
+
+  private void recomputeErrorFlags() {
+    int flags = 0;
+    if (rxOverflowDrops > 0) {
+      flags |= 0x1; // bit0 RX_OVERFLOW
+    }
+    if (txFramingErrors > 0) {
+      flags |= 0x2; // bit1 TX_FRAMING_ERR
+    }
+    this.errorFlagsBitfield = flags;
+  }
+
+  // Accessors for stats command
+  public long getTxFramesParsed() {
+    return txFramesParsed;
+  }
+
+  public long getTxFramesDropped() {
+    return txFramesDropped;
+  }
+
+  public long getTxFramingErrors() {
+    return txFramingErrors;
+  }
+
+  public long getRxFramesEmitted() {
+    return rxFramesEmitted;
+  }
+
+  public long getRxOverflowDrops() {
+    return rxOverflowDrops;
+  }
+
+  public int getRxQueueDepth() {
+    return rxQueue.size();
+  }
+
+  public int getErrorFlagsBitfield() {
+    return errorFlagsBitfield;
   }
 
   private static final class TxRuntime {

@@ -189,6 +189,38 @@ public class NetworkCore implements ModInitializer {
                           return 1;
                         }))
             .then(
+                CommandManager.literal("stats")
+                    .executes(
+                        context -> {
+                          ServerCommandSource source = context.getSource();
+                          ServerPlayerEntity player = source.getPlayer();
+                          if (player == null) {
+                            source.sendError(
+                                Text.literal("This command can only be run by a player"));
+                            return 0;
+                          }
+                          NetworkCoreEntity nearest = findNearestNetworkCore(player);
+                          if (nearest == null) {
+                            source.sendError(
+                                Text.literal("No NetworkCore block found within 16 blocks"));
+                            return 0;
+                          }
+                          CoreRuntime rt = nearest.getRuntime();
+                          String msg =
+                              String.format(
+                                  "Stats @ %s:\n txFramesParsed=%d txFramesDropped=%d txFramingErrors=%d\n rxFramesEmitted=%d rxOverflowDrops=%d rxQueueDepth=%d errorFlags=0x%X",
+                                  nearest.getPos(),
+                                  rt.getTxFramesParsed(),
+                                  rt.getTxFramesDropped(),
+                                  rt.getTxFramingErrors(),
+                                  rt.getRxFramesEmitted(),
+                                  rt.getRxOverflowDrops(),
+                                  rt.getRxQueueDepth(),
+                                  rt.getErrorFlagsBitfield());
+                          source.sendMessage(Text.literal(msg));
+                          return 1;
+                        }))
+            .then(
                 CommandManager.literal("help")
                     .executes(
                         ctx -> {
@@ -201,10 +233,10 @@ public class NetworkCore implements ModInitializer {
                                       + "/networkcore resumeTickProcess - resume nearest core processing\n"
                                       + "/networkcore udpaddress - show UDP address for packets\n"
                                       + "/networkcore listports - list allocated ports\n"
+                                      + "/networkcore stats - show counters for nearest core\n"
                                       + "/networkcore help - show this help"));
                           return 1;
                         }));
-
     // Register the root and a short alias /nc redirecting to it.
     dispatcher.register(root);
     dispatcher.register(
