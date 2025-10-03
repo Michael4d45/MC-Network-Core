@@ -4,7 +4,7 @@
     "particle": "network-core:block/network_core_particle",
     "north": "network-core:block/network_core_receive",
     "south": "network-core:block/network_core_transmit_powered",
-    "arrows": "network-core:block/network_core_arrows_transmit_powered"
+    "arrows": "network-core:block/network_core_arrows_transmit_clock_powered"
   },
   "elements": [
     {

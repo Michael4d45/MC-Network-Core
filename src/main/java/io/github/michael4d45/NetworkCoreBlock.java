@@ -32,6 +32,7 @@ public class NetworkCoreBlock extends BlockWithEntity {
   public static final IntProperty TRANSMIT_POWERED = IntProperty.of("transmit_powered", 0, 15);
   public static final BooleanProperty RECEIVE_ACTIVE = BooleanProperty.of("receive_active");
   public static final BooleanProperty TRANSMIT_ACTIVE = BooleanProperty.of("transmit_active");
+  public static final BooleanProperty CLOCK_ACTIVE = BooleanProperty.of("clock_active");
   public static final MapCodec<NetworkCoreBlock> CODEC = createCodec(NetworkCoreBlock::new);
 
   public NetworkCoreBlock(Settings settings) {
@@ -43,7 +44,8 @@ public class NetworkCoreBlock extends BlockWithEntity {
             .with(RECEIVE_POWERED, 0)
             .with(TRANSMIT_POWERED, 0)
             .with(RECEIVE_ACTIVE, false)
-            .with(TRANSMIT_ACTIVE, false));
+            .with(TRANSMIT_ACTIVE, false)
+            .with(CLOCK_ACTIVE, false));
   }
 
   public static int getTransmitPower(BlockState state) {
@@ -122,7 +124,8 @@ public class NetworkCoreBlock extends BlockWithEntity {
 
   @Override
   protected void appendProperties(StateManager.Builder<Block, BlockState> builder) {
-    builder.add(FACING, RECEIVE_POWERED, TRANSMIT_POWERED, RECEIVE_ACTIVE, TRANSMIT_ACTIVE);
+    builder.add(
+        FACING, RECEIVE_POWERED, TRANSMIT_POWERED, RECEIVE_ACTIVE, TRANSMIT_ACTIVE, CLOCK_ACTIVE);
   }
 
   @Override
@@ -134,6 +137,7 @@ public class NetworkCoreBlock extends BlockWithEntity {
       @Nullable WireOrientation wireOrientation,
       boolean notify) {
     updateTransmitPowering(world, pos, state);
+    updateClockPowering(world, pos, state);
     super.neighborUpdate(state, world, pos, sourceBlock, wireOrientation, notify);
   }
 
@@ -169,6 +173,36 @@ public class NetworkCoreBlock extends BlockWithEntity {
     int powering =
         world.getEmittedRedstonePower(pos.offset(powerReadDirection), powerReadDirection);
     updateLevelAndActiveIfNeeded(world, pos, state, TRANSMIT_POWERED, TRANSMIT_ACTIVE, powering);
+  }
+
+  /**
+   * Updates the CLOCK_ACTIVE property based on redstone power present on any non-transmit /
+   * non-receive side. (Transmit = the side we sample for TX; Receive = the side we emit on.) Any
+   * power >0 on the remaining four sides sets CLOCK_ACTIVE=true. This is edge-detected in the block
+   * entity tick to advance symbol timing only when the clock line toggles.
+   */
+  public static void updateClockPowering(World world, BlockPos pos, BlockState state) {
+    if (world.isClient) {
+      return;
+    }
+    Direction facing = state.get(FACING); // internal orientation
+    Direction transmitSampleSide =
+        facing.getOpposite(); // currently used for transmit sampling & receive emission
+    // Sides to ignore: transmitSampleSide and facing (the opposite face)
+    boolean active = false;
+    for (Direction dir : Direction.values()) {
+      if (dir == facing || dir == transmitSampleSide) {
+        continue; // skip the two axial faces already used for TX/RX semantics
+      }
+      int p = world.getEmittedRedstonePower(pos.offset(dir), dir);
+      if (p > 0) {
+        active = true;
+        break;
+      }
+    }
+    if (state.get(CLOCK_ACTIVE) != active) {
+      world.setBlockState(pos, state.with(CLOCK_ACTIVE, active), Block.NOTIFY_LISTENERS);
+    }
   }
 
   @Nullable

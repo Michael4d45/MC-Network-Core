@@ -12,22 +12,12 @@ import net.minecraft.world.World;
 public class NetworkCoreEntity extends BlockEntity {
 
   private static final String PORT_KEY = "Port";
-  private static final String SYMBOL_PERIOD_KEY = "SymbolPeriodTicks";
 
   /** Cached assigned network port (0 = unassigned). */
   private int port;
 
-  /** Symbol period in ticks (1-8, default 2). */
-  private int symbolPeriodTicks = 2;
-
-  /** Tick counter for symbol processing. */
-  private int tickCounter = 0;
-
   /** Runtime state (not persisted). */
   private final CoreRuntime runtime = new CoreRuntime();
-
-  /** Paused state for testing. */
-  private boolean paused = false;
 
   public NetworkCoreEntity(BlockPos pos, BlockState state) {
     super(ModBlockEntities.NETWORK_CORE, pos, state);
@@ -53,26 +43,6 @@ public class NetworkCoreEntity extends BlockEntity {
     }
   }
 
-  public int getSymbolPeriodTicks() {
-    return symbolPeriodTicks;
-  }
-
-  public void setSymbolPeriodTicks(int symbolPeriodTicks) {
-    int clamped = Math.max(1, Math.min(8, symbolPeriodTicks));
-    if (this.symbolPeriodTicks != clamped) {
-      this.symbolPeriodTicks = clamped;
-      markDirty();
-    }
-  }
-
-  public boolean isPaused() {
-    return paused;
-  }
-
-  public void setPaused(boolean paused) {
-    this.paused = paused;
-  }
-
   public CoreRuntime getRuntime() {
     return runtime;
   }
@@ -81,18 +51,12 @@ public class NetworkCoreEntity extends BlockEntity {
   protected void readData(ReadView view) {
     int loaded = view.getOptionalInt(PORT_KEY).orElse(-1);
     this.port = Math.max(-1, Math.min(65535, loaded));
-
-    int loadedPeriod = view.getOptionalInt(SYMBOL_PERIOD_KEY).orElse(2);
-    this.symbolPeriodTicks = Math.max(1, Math.min(8, loadedPeriod));
   }
 
   @Override
   protected void writeData(WriteView view) {
     if (port >= 0) {
       view.putInt(PORT_KEY, port);
-    }
-    if (symbolPeriodTicks != 2) { // Only save if not default
-      view.putInt(SYMBOL_PERIOD_KEY, symbolPeriodTicks);
     }
   }
 
@@ -127,13 +91,8 @@ public class NetworkCoreEntity extends BlockEntity {
     }
 
     // Skip ticking when:
-    // 1. Explicitly paused via testing flag (be.paused)
-    // 2. Singleplayer pause menu is open (integrated server paused)
-    // 3. Global tick freeze is active (/tick freeze)
-    if (be.paused) {
-      return;
-    }
-
+    // 1. Singleplayer pause menu is open (integrated server paused)
+    // 2. Global tick freeze is active (/tick freeze)
     var server = serverWorld.getServer();
     // Integrated server pause (singleplayer ESC menu) - server stops most ticks, this is an extra
     // guard
@@ -143,34 +102,18 @@ public class NetworkCoreEntity extends BlockEntity {
 
     // Tick freeze (debug /tick freeze). Allow ticking when a step is being executed.
     var tickManager = server.getTickManager();
-    // If the server is frozen AND not currently consuming a step tick, skip.
-    // (When stepping, the manager reports it should tick even while frozen.)
-    try {
-      // Use reflective/defensive call in case mappings differ; fall back to isFrozen only.
-      boolean shouldTick = true;
-      try {
-        shouldTick = (boolean) tickManager.getClass().getMethod("shouldTick").invoke(tickManager);
-      } catch (ReflectiveOperationException ignored) {
-        // If method absent, assume we should tick (so stepping still works) and only block when
-        // fully frozen.
-      }
-      if (tickManager.isFrozen() && !shouldTick) {
-        return;
-      }
-    } catch (RuntimeException t) {
-      // Fail open (continue ticking) to avoid breaking debug sessions if an unexpected runtime
-      // issue occurs.
+    if (tickManager.isFrozen() && !tickManager.shouldTick()) {
+      return;
     }
 
-    int period = be.getSymbolPeriodTicks();
-    be.tickCounter++;
-    if (be.tickCounter >= period) {
+    // Clock gating: only advance tickCounter when CLOCK_ACTIVE is true (level-triggered).
+    boolean clockNow = state.getOrEmpty(NetworkCoreBlock.CLOCK_ACTIVE).orElse(false);
+    if (clockNow) {
       int transmitPower = NetworkCoreBlock.getTransmitPower(state);
       be.runtime.processTxSymbol(be, transmitPower);
       be.runtime.processRxOutput();
       int receivePower = be.runtime.getLastOutputPower();
       NetworkCoreBlock.setReceivePowering(serverWorld, pos, state, receivePower);
-      be.tickCounter = 0;
     }
   }
 

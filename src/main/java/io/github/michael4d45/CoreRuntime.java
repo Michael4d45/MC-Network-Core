@@ -93,21 +93,6 @@ public class CoreRuntime {
       }
 
       case 0x3 -> {
-        // SETPER - Set symbol period
-        int[] args = controlFrame.getArgs();
-        if (args.length >= 1) {
-          int period = args[0];
-          if (period >= 1 && period <= 8) {
-            // Update symbol period for this core
-            be.setSymbolPeriodTicks(period);
-            NetworkCore.LOGGER.info("SETPER control frame: set symbol period to {}", period);
-          } else {
-            NetworkCore.LOGGER.warn("Invalid symbol period {} in SETPER control frame", period);
-          }
-        }
-      }
-
-      case 0x4 -> {
         // SETPORT - Set port
         int[] args = controlFrame.getArgs();
         if (args.length >= 1 && args.length <= 4) {
@@ -127,7 +112,7 @@ public class CoreRuntime {
         }
       }
 
-      case 0x5 -> // STATSCLR - Clear counters
+      case 0x4 -> // STATSCLR - Clear counters
       {
         txFramesParsed = 0;
         txFramesDropped = 0;

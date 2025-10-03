@@ -111,52 +111,6 @@ public class NetworkCore implements ModInitializer {
                                   return 1;
                                 })))
             .then(
-                CommandManager.literal("pauseTickProcess")
-                    .executes(
-                        context -> {
-                          ServerCommandSource source = context.getSource();
-                          ServerPlayerEntity player = source.getPlayer();
-                          if (player == null) {
-                            source.sendError(
-                                Text.literal("This command can only be run by a player"));
-                            return 0;
-                          }
-                          NetworkCoreEntity nearest = findNearestNetworkCore(player);
-                          if (nearest == null) {
-                            source.sendError(
-                                Text.literal("No NetworkCore block found within 16 blocks"));
-                            return 0;
-                          }
-                          nearest.setPaused(true);
-                          source.sendMessage(
-                              Text.literal(
-                                  "Paused tick process for NetworkCore at " + nearest.getPos()));
-                          return 1;
-                        }))
-            .then(
-                CommandManager.literal("resumeTickProcess")
-                    .executes(
-                        context -> {
-                          ServerCommandSource source = context.getSource();
-                          ServerPlayerEntity player = source.getPlayer();
-                          if (player == null) {
-                            source.sendError(
-                                Text.literal("This command can only be run by a player"));
-                            return 0;
-                          }
-                          NetworkCoreEntity nearest = findNearestNetworkCore(player);
-                          if (nearest == null) {
-                            source.sendError(
-                                Text.literal("No NetworkCore block found within 16 blocks"));
-                            return 0;
-                          }
-                          nearest.setPaused(false);
-                          source.sendMessage(
-                              Text.literal(
-                                  "Resumed tick process for NetworkCore at " + nearest.getPos()));
-                          return 1;
-                        }))
-            .then(
                 CommandManager.literal("udpaddress")
                     .executes(
                         context -> {
@@ -227,14 +181,13 @@ public class NetworkCore implements ModInitializer {
                           ServerCommandSource src = ctx.getSource();
                           src.sendMessage(
                               Text.literal(
-                                  "NetworkCore commands:\n"
-                                      + "/networkcore sendtest <0-15> - send a symbol to nearest core\n"
-                                      + "/networkcore pauseTickProcess - pause nearest core processing\n"
-                                      + "/networkcore resumeTickProcess - resume nearest core processing\n"
-                                      + "/networkcore udpaddress - show UDP address for packets\n"
-                                      + "/networkcore listports - list allocated ports\n"
-                                      + "/networkcore stats - show counters for nearest core\n"
-                                      + "/networkcore help - show this help"));
+                                  """
+                                           NetworkCore commands:
+                                           /networkcore sendtest <0-15> - send a symbol to nearest core
+                                           /networkcore udpaddress - show UDP address for packets
+                                           /networkcore listports - list allocated ports
+                                           /networkcore stats - show counters for nearest core
+                                           /networkcore help - show this help"""));
                           return 1;
                         }));
     // Register the root and a short alias /nc redirecting to it.

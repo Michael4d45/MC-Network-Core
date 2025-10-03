@@ -1,95 +1,187 @@
 {
   "variants": {
-    "facing=north,receive_active=false,transmit_active=false": {
+    "facing=north,receive_active=false,transmit_active=false,clock_active=false": {
       "model": "network-core:block/network_core"
     },
-    "facing=north,receive_active=true,transmit_active=false": {
+    "facing=north,receive_active=false,transmit_active=false,clock_active=true": {
+      "model": "network-core:block/network_core_clock"
+    },
+    "facing=north,receive_active=true,transmit_active=false,clock_active=false": {
       "model": "network-core:block/network_core_receive_powered"
     },
-    "facing=north,receive_active=false,transmit_active=true": {
+    "facing=north,receive_active=true,transmit_active=false,clock_active=true": {
+      "model": "network-core:block/network_core_receive_clock_powered"
+    },
+    "facing=north,receive_active=false,transmit_active=true,clock_active=false": {
       "model": "network-core:block/network_core_transmit_powered"
     },
-    "facing=north,receive_active=true,transmit_active=true": {
+    "facing=north,receive_active=false,transmit_active=true,clock_active=true": {
+      "model": "network-core:block/network_core_transmit_clock_powered"
+    },
+    "facing=north,receive_active=true,transmit_active=true,clock_active=false": {
       "model": "network-core:block/network_core_receive_transmit_powered"
     },
-    "facing=south,receive_active=false,transmit_active=false": {
+    "facing=north,receive_active=true,transmit_active=true,clock_active=true": {
+      "model": "network-core:block/network_core_receive_transmit_clock_powered"
+    },
+    "facing=south,receive_active=false,transmit_active=false,clock_active=false": {
       "model": "network-core:block/network_core",
       "y": 180
     },
-    "facing=south,receive_active=true,transmit_active=false": {
+    "facing=south,receive_active=false,transmit_active=false,clock_active=true": {
+      "model": "network-core:block/network_core_clock",
+      "y": 180
+    },
+    "facing=south,receive_active=true,transmit_active=false,clock_active=false": {
       "model": "network-core:block/network_core_receive_powered",
       "y": 180
     },
-    "facing=south,receive_active=false,transmit_active=true": {
+    "facing=south,receive_active=true,transmit_active=false,clock_active=true": {
+      "model": "network-core:block/network_core_receive_clock_powered",
+      "y": 180
+    },
+    "facing=south,receive_active=false,transmit_active=true,clock_active=false": {
       "model": "network-core:block/network_core_transmit_powered",
       "y": 180
     },
-    "facing=south,receive_active=true,transmit_active=true": {
+    "facing=south,receive_active=false,transmit_active=true,clock_active=true": {
+      "model": "network-core:block/network_core_transmit_clock_powered",
+      "y": 180
+    },
+    "facing=south,receive_active=true,transmit_active=true,clock_active=false": {
       "model": "network-core:block/network_core_receive_transmit_powered",
       "y": 180
     },
-    "facing=west,receive_active=false,transmit_active=false": {
+    "facing=south,receive_active=true,transmit_active=true,clock_active=true": {
+      "model": "network-core:block/network_core_receive_transmit_clock_powered",
+      "y": 180
+    },
+    "facing=west,receive_active=false,transmit_active=false,clock_active=false": {
       "model": "network-core:block/network_core",
       "y": 270
     },
-    "facing=west,receive_active=true,transmit_active=false": {
+    "facing=west,receive_active=false,transmit_active=false,clock_active=true": {
+      "model": "network-core:block/network_core_clock",
+      "y": 270
+    },
+    "facing=west,receive_active=true,transmit_active=false,clock_active=false": {
       "model": "network-core:block/network_core_receive_powered",
       "y": 270
     },
-    "facing=west,receive_active=false,transmit_active=true": {
+    "facing=west,receive_active=true,transmit_active=false,clock_active=true": {
+      "model": "network-core:block/network_core_receive_clock_powered",
+      "y": 270
+    },
+    "facing=west,receive_active=false,transmit_active=true,clock_active=false": {
       "model": "network-core:block/network_core_transmit_powered",
       "y": 270
     },
-    "facing=west,receive_active=true,transmit_active=true": {
+    "facing=west,receive_active=false,transmit_active=true,clock_active=true": {
+      "model": "network-core:block/network_core_transmit_clock_powered",
+      "y": 270
+    },
+    "facing=west,receive_active=true,transmit_active=true,clock_active=false": {
       "model": "network-core:block/network_core_receive_transmit_powered",
       "y": 270
     },
-    "facing=east,receive_active=false,transmit_active=false": {
+    "facing=west,receive_active=true,transmit_active=true,clock_active=true": {
+      "model": "network-core:block/network_core_receive_transmit_clock_powered",
+      "y": 270
+    },
+    "facing=east,receive_active=false,transmit_active=false,clock_active=false": {
       "model": "network-core:block/network_core",
       "y": 90
     },
-    "facing=east,receive_active=true,transmit_active=false": {
+    "facing=east,receive_active=false,transmit_active=false,clock_active=true": {
+      "model": "network-core:block/network_core_clock",
+      "y": 90
+    },
+    "facing=east,receive_active=true,transmit_active=false,clock_active=false": {
       "model": "network-core:block/network_core_receive_powered",
       "y": 90
     },
-    "facing=east,receive_active=false,transmit_active=true": {
+    "facing=east,receive_active=true,transmit_active=false,clock_active=true": {
+      "model": "network-core:block/network_core_receive_clock_powered",
+      "y": 90
+    },
+    "facing=east,receive_active=false,transmit_active=true,clock_active=false": {
       "model": "network-core:block/network_core_transmit_powered",
       "y": 90
     },
-    "facing=east,receive_active=true,transmit_active=true": {
+    "facing=east,receive_active=false,transmit_active=true,clock_active=true": {
+      "model": "network-core:block/network_core_transmit_clock_powered",
+      "y": 90
+    },
+    "facing=east,receive_active=true,transmit_active=true,clock_active=false": {
       "model": "network-core:block/network_core_receive_transmit_powered",
       "y": 90
     },
-    "facing=up,receive_active=false,transmit_active=false": {
+    "facing=east,receive_active=true,transmit_active=true,clock_active=true": {
+      "model": "network-core:block/network_core_receive_transmit_clock_powered",
+      "y": 90
+    },
+    "facing=up,receive_active=false,transmit_active=false,clock_active=false": {
       "model": "network-core:block/network_core",
       "x": 270
     },
-    "facing=up,receive_active=true,transmit_active=false": {
+    "facing=up,receive_active=false,transmit_active=false,clock_active=true": {
+      "model": "network-core:block/network_core_clock",
+      "x": 270
+    },
+    "facing=up,receive_active=true,transmit_active=false,clock_active=false": {
       "model": "network-core:block/network_core_receive_powered",
       "x": 270
     },
-    "facing=up,receive_active=false,transmit_active=true": {
+    "facing=up,receive_active=true,transmit_active=false,clock_active=true": {
+      "model": "network-core:block/network_core_receive_clock_powered",
+      "x": 270
+    },
+    "facing=up,receive_active=false,transmit_active=true,clock_active=false": {
       "model": "network-core:block/network_core_transmit_powered",
       "x": 270
     },
-    "facing=up,receive_active=true,transmit_active=true": {
+    "facing=up,receive_active=false,transmit_active=true,clock_active=true": {
+      "model": "network-core:block/network_core_transmit_clock_powered",
+      "x": 270
+    },
+    "facing=up,receive_active=true,transmit_active=true,clock_active=false": {
       "model": "network-core:block/network_core_receive_transmit_powered",
       "x": 270
     },
-    "facing=down,receive_active=false,transmit_active=false": {
+    "facing=up,receive_active=true,transmit_active=true,clock_active=true": {
+      "model": "network-core:block/network_core_receive_transmit_clock_powered",
+      "x": 270
+    },
+    "facing=down,receive_active=false,transmit_active=false,clock_active=false": {
       "model": "network-core:block/network_core",
       "x": 90
     },
-    "facing=down,receive_active=true,transmit_active=false": {
+    "facing=down,receive_active=false,transmit_active=false,clock_active=true": {
+      "model": "network-core:block/network_core_clock",
+      "x": 90
+    },
+    "facing=down,receive_active=true,transmit_active=false,clock_active=false": {
       "model": "network-core:block/network_core_receive_powered",
       "x": 90
     },
-    "facing=down,receive_active=false,transmit_active=true": {
+    "facing=down,receive_active=true,transmit_active=false,clock_active=true": {
+      "model": "network-core:block/network_core_receive_clock_powered",
+      "x": 90
+    },
+    "facing=down,receive_active=false,transmit_active=true,clock_active=false": {
       "model": "network-core:block/network_core_transmit_powered",
       "x": 90
     },
-    "facing=down,receive_active=true,transmit_active=true": {
+    "facing=down,receive_active=false,transmit_active=true,clock_active=true": {
+      "model": "network-core:block/network_core_transmit_clock_powered",
+      "x": 90
+    },
+    "facing=down,receive_active=true,transmit_active=true,clock_active=false": {
       "model": "network-core:block/network_core_receive_transmit_powered",
+      "x": 90
+    },
+    "facing=down,receive_active=true,transmit_active=true,clock_active=true": {
+      "model": "network-core:block/network_core_receive_transmit_clock_powered",
       "x": 90
     }
   }

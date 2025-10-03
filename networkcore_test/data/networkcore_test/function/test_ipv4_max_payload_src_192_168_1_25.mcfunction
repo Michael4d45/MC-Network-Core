@@ -17,7 +17,6 @@
 # SRC_IP = 192.168.1.25,  SRC_UDP_PORT = 12345, SRC_WORLD = 0, SRC_PORT = 42,
 # PAYLOAD = max (255 nibbles) pattern 1..14
 
-networkcore pauseTickProcess
 # SOF
 networkcore sendtest 15
 # TYPE
@@ -346,4 +345,3 @@ networkcore sendtest 3
 # 255
 # EOF
 networkcore sendtest 0
-networkcore resumeTickProcess

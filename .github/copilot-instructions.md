@@ -18,7 +18,7 @@ Keep assets internally consistent; missing model/texture pairs will render as ma
 - Textures: All referenced textures present under `assets/network-core/textures/block/`.
 - Loot Table: `data/network-core/loot_tables/blocks/network_core.json` – drops itself; includes explosion survival predicate.
 - Lang: `assets/network-core/lang/en_us.json` includes block name & command feedback strings.
-- No GUI: Configuration occurs exclusively through control frames (SETPER, SETPORT) and commands.
+- No GUI: Configuration occurs exclusively through control frames (SETPORT) and commands.
 - Datapack Tests: `networkcore_test` functions kept in sync with protocol changes (update when frame formats evolve).
 
 ## Version Management
@@ -37,14 +37,14 @@ Before committing or releasing:
    - Facing property correct relative to placement look direction
    - Transmit side reads neighbor redstone power (opposite facing)
    - Receive side emits power updates only when frame emission output changes
-4. Commands function (see Commands section) – especially `sendtest`, `pauseTickProcess`, `resumeTickProcess`, `listports`, `udpaddress`
+4. Commands function (see Commands section) – especially `sendtest`, `listports`, `udpaddress`
 5. Protocol invariants: SOF=15, EOF=0, idle=0 upheld; Data(0), Control(1), Status(2), IPv4(3) frames parse
 6. Counters increment appropriately for framing errors, frames parsed/emitted, drops (verify via logs or temporary debug output)
 7. No missing resources (logs free of "missing model" / magenta blocks)
 8. World save/load cycle:
-   - Port & symbol period persist
+   - Port persist
    - Conflicting ports auto-reassigned without crash/hang
-9. Datapack test functions run (e.g., `/function networkcore_test:test_ipv4_max_payload_src_192_168_1_25`) without desync/hang when preceded by `/networkcore pauseTickProcess`
+9. Datapack test functions run (e.g., `/function networkcore_test:test_ipv4_max_payload_src_192_168_1_25`)
 10. Hot-load / reload older saves (if schema changes) does not crash; defaults applied
 
 ## World Persistence & Loading Considerations
@@ -54,8 +54,8 @@ Before committing or releasing:
 ### Block Entity Persistence
 
 - Loading order: `readData()` (storage API) populates fields before backend registration / port claiming.
-- Defaults: Omitted `Port` → request new port; omitted `SymbolPeriodTicks` → default 2.
-- Validation: Clamp symbol period to [1,8]; clamp port to [-1,65535].
+- Defaults: Omitted `Port` → request new port.
+- Validation: Clamp port to [-1,65535].
 - Version tolerance: Treat absent fields as defaults; never assume presence.
 
 ### Backend Registration
@@ -75,7 +75,7 @@ Before committing or releasing:
 
 ### Prevention Checklist
 
-- [ ] Does this change affect block entity storage keys (`Port`, `SymbolPeriodTicks`)?
+- [ ] Does this change affect block entity storage keys (`Port`)?
 - [ ] Are new persisted fields given safe defaults in `readData()`?
 - [ ] Is backend port registration idempotent & non-destructive for existing assignments?
 - [ ] Could load-time logic trigger excessive neighbor updates?
@@ -95,13 +95,10 @@ Before committing or releasing:
 Alias root: `/networkcore` (`/nc` shortcut)
 
 - `sendtest <0-15>`: Inject a symbol into nearest core's TX parser (bypasses timing)
-- `pauseTickProcess` / `resumeTickProcess`: Toggle internal tick pacing for deterministic test sequences
 - `udpaddress`: Displays current UDP bind/target address used by `IPv4Router`
 - `listports`: Dump allocated ports per loaded world with block positions
 - `stats`: Show counters + queue depth + error flags for nearest core
 - `help`: Command summary
-
-Use pause/resume around datapack symbol sequences to avoid extraneous tick-driven symbols interleaving.
 
 ## Testing Aids
 

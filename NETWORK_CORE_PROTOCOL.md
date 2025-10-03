@@ -19,11 +19,11 @@ Provide a deterministic, NIC-inspired redstone-to-packet mediation layer with:
 
 ## 2. Conceptual Layering
 
-| Layer | Real NIC Equivalent | NetworkCore Responsibility                                     |
-| ----- | ------------------- | -------------------------------------------------------------- |
-| L1    | Physical            | Redstone power levels (0–15) sampled/emitted per symbol period |
-| L2    | Data Link (MAC)     | Frame delimiting, length                                       |
-| L3+   | Network / Transport | Port-based virtual channels, routing                           |
+| Layer | Real NIC Equivalent | NetworkCore Responsibility                   |
+| ----- | ------------------- | -------------------------------------------- |
+| L1    | Physical            | Redstone power levels (0–15) sampled/emitted |
+| L2    | Data Link (MAC)     | Frame delimiting, length                     |
+| L3+   | Network / Transport | Port-based virtual channels, routing         |
 
 ---
 
@@ -127,9 +127,8 @@ Opcodes:
 | 0x0    | NOP      | –           | Idle / resync assist                                               |
 | 0x1    | RESET    | –           | Flush TX/RX, clear errors                                          |
 | 0x2    | MODEQ    | –           | Request status frame                                               |
-| 0x3    | SETPER   | 1 nibble    | Set symbol period (1–8, clamped)                                   |
-| 0x4    | SETPORT  | 1–4 nibbles | Set port (high-high, high-low, low-high, low-low nibbles optional) |
-| 0x5    | STATSCLR | –           | Clear counters                                                     |
+| 0x3    | SETPORT  | 1–4 nibbles | Set port (high-high, high-low, low-high, low-low nibbles optional) |
+| 0x4    | STATSCLR | –           | Clear counters                                                     |
 
 ---
 
@@ -271,7 +270,7 @@ Overflow policy: if TX ring full at COMMIT → drop frame, increment TX_FRAMES_D
 ```
 If RX empty: output 0.
 Else: output SOF, TYPE, [addresses if TYPE=0], LEN, payload, then EOF.
-Advance every symbol_period_ticks.
+Advance when clock is powered.
 ```
 
 ---
@@ -303,7 +302,6 @@ Planned for future implementation:
 
 | Name                | Storage | Default | Range   | Purpose                             |
 | ------------------- | ------- | ------- | ------- | ----------------------------------- |
-| symbol_period_ticks | NBT     | 2       | 1–8     | Timing tolerance (ticks per symbol) |
 | port                | NBT     | 0       | 0–65535 | NIC's own port ID for frames        |
 
 ---
@@ -324,7 +322,6 @@ Bitfield:
 | EOF Handling | Exactly one 0 nibble terminates frame. Idle = constant 0. |
 | Max Frame Length | 255 payload nibbles (LEN=255) |
 | Frame Types | 0=Data (with addresses), 1=Control, 2=Status (proposed), 3=IPv4 |
-| Symbol Period | Default 2 ticks, range 1–8 |
 | Overflow | Drop newest frame, increment counter |
 | Status Frame Signature | First nibble = 0xA |
 | Port Header | DST_WORLD + DST_PORT (16 bits) + SRC_WORLD + SRC_PORT (16 bits) for Data frames; IPv4 frames include additional UDP ports |

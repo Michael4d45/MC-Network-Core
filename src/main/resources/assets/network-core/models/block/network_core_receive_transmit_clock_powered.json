@@ -2,9 +2,9 @@
   "parent": "minecraft:block/block",
   "textures": {
     "particle": "network-core:block/network_core_particle",
-    "north": "network-core:block/network_core_receive",
+    "north": "network-core:block/network_core_receive_powered",
     "south": "network-core:block/network_core_transmit_powered",
-    "arrows": "network-core:block/network_core_arrows_transmit_powered"
+    "arrows": "network-core:block/network_core_arrows_receive_transmit_clock_powered"
   },
   "elements": [
     {

@@ -4,12 +4,12 @@ Deterministic, NIC-inspired redstone ↔ packet interface for Fabric Minecraft 1
 
 ## Overview
 
-Each `Network Core` block acts like a minimal network interface. It samples a redstone power level every symbol period (default 2 ticks) on the `T` face (Transmitting) interpreting it as a nibble (0–15). Frames are emitted as redstone power on the `R` face (Receiving). The block persists its assigned port and symbol period across world saves.
+Each `Network Core` block acts like a minimal network interface. It samples a redstone power level every game tick if clock is powered on the `T` face (Transmitting) interpreting it as a nibble (0–15). Frames are emitted as redstone power on the `R` face (Receiving). The block persists its assigned port across world saves. A optional clock gating input enables externally clocked deterministic capture.
 
 ## Implemented Frame Types
 
 - TYPE=0 Data
-- TYPE=1 Control (NOP, RESET, MODEQ, SETPER, SETPORT, STATSCLR)
+- TYPE=1 Control (NOP, RESET, MODEQ, SETPORT, STATSCLR)
 - TYPE=2 Status (8‑nibble payload emitted on MODEQ)
 - TYPE=3 IPv4 (bridged via UDP)
 
@@ -18,7 +18,6 @@ Each `Network Core` block acts like a minimal network interface. It samples a re
 - Fixed nibble wire protocol (SOF=15, EOF=0, idle=0)
 - Data, Control, Status, IPv4 frame parsing & emission
 - Port allocation & persistence (0–65535 per world)
-- Symbol period (1–8 ticks) configurable via control frames
 - Counters: framing errors, frames parsed/emitted, RX overflow drops (via `/networkcore stats` & status frame flags)
 - IPv4 frame mapping (TYPE=3) including IP + UDP + in‑game addressing
 - Commands for low-level testing & inspection
@@ -61,16 +60,14 @@ Highlights:
 Stored NBT keys:
 
 - `Port` (may be reassigned on conflict)
-- `SymbolPeriodTicks` (omitted when default=2)
 
-On load the saved port is reconciled via `DataRouter`; invalid / missing values get a fresh port. Symbol period is clamped to [1,8].
+On load the saved port is reconciled via `DataRouter`; invalid / missing values get a fresh port.
 
 ## Commands
 
 Root `/networkcore` (alias `/nc`), operator required:
 
 - `sendtest <0-15>` inject a nibble into nearest core
-- `pauseTickProcess` / `resumeTickProcess` control ticking for deterministic injection
 - `udpaddress` show current UDP endpoint
 - `listports` list allocated ports with positions
 - `stats` show counters, queue depth, error flags
@@ -82,20 +79,6 @@ Use functions under `networkcore_test` to emit canonical frames, e.g.:
 
 ```
 /function networkcore_test:test_ipv4_max_payload_src_192_168_1_25
-```
-
-For deterministic sequences:
-
-```
-/networkcore pauseTickProcess
-... inject symbols ...
-/networkcore resumeTickProcess
-```
-
-## Building
-
-```
-./gradlew build
 ```
 
 Artifacts land in `build/libs/`.

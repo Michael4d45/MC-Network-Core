@@ -18,7 +18,6 @@
 # PAYLOAD (255 nibbles pattern)
 # EOF 0
 
-networkcore pauseTickProcess
 # SOF
 networkcore sendtest 15
 # TYPE
@@ -351,4 +350,3 @@ networkcore sendtest 3
 # 255
 # EOF
 networkcore sendtest 0
-networkcore resumeTickProcess

@@ -1,7 +1,6 @@
 # IPv4 frame to external host with payload [10,11]
 # SOF=15 (Start of Frame), TYPE=3 (IPv4), DST_IP=12,0,10,8,0,1,0,10 (192.168.1.10), DST_UDP_PORT=0,0,3,4 (52), DST_WORLD=0,0 (0), DST_PORT=0,0,2,10 (42), SRC_IP=7,15,0,0,0,0,0,1 (127.0.0.1), SRC_UDP_PORT=3,0,3,9 (12345), SRC_WORLD=0,0 (0), SRC_PORT=0,0,1,2 (18), LEN=0,2 (2), 10, 11 (Payload), EOF=0 (End of Frame)
 # DST_IP = 192.168.1.10, DST_UDP_PORT = 52, SRC_PORT = 18, PAYLOAD = [10, 11]
-networkcore pauseTickProcess
 # SOF
 networkcore sendtest 15
 # TYPE
@@ -60,4 +59,3 @@ networkcore sendtest 10
 networkcore sendtest 11
 # EOF
 networkcore sendtest 0
-networkcore resumeTickProcess
