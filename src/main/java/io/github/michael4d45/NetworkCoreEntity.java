@@ -13,7 +13,7 @@ public class NetworkCoreEntity extends BlockEntity {
 
   private static final String PORT_KEY = "Port";
 
-  /** Cached assigned network port (0 = unassigned). */
+  /** Cached assigned network port (-1 = unassigned). */
   private int port;
 
   /** Runtime state (not persisted). */
