@@ -12,6 +12,7 @@ Provide a deterministic, NIC-inspired redstone-to-packet mediation layer with:
 - NIC → Host RX (RX ring)
 - Bounded FIFO rings (drop on overflow)
 - Fixed nibble-based wire protocol
+- IPv4 proxying via UDP for external host communication
 
 **Non-Goals (Phase 1):** cryptography, reliability, chunk-border bridging, checksum.
 
@@ -227,6 +228,7 @@ EOF (0)
 - Payload Length = (LEN_HI << 4) | LEN_LO = number of payload nibbles.
 - IPv4 address = 4 bytes (8 nibbles), high nibble first per byte.
 - Direction determined by context: outbound when sent from redstone, inbound when received from IPv4Router.
+- **Inbound Handling**: UDP packets received from remote IPv4 hosts contain the nibble-encoded IPv4 frame as payload. The IPv4Router parses this data into a frame and forwards it to the DataRouter for routing to DST_WORLD/DST_PORT within Minecraft. The router acts as a proxy between the redstone network and external UDP/IPv4 hosts or other Minecraft instances running this mod.
 
 Example: IPv4 frame from 192.168.1.10:18 to world 0 port 52 UDP port 0 with payload [10, 11]
 
@@ -327,3 +329,4 @@ Bitfield:
 | Port Header | DST_WORLD + DST_PORT (16 bits) + SRC_WORLD + SRC_PORT (16 bits) for Data frames; IPv4 frames include additional UDP ports |
 | RESET Behavior | Flush TX, RX, clear error flags (counters remain unless STATSCLR) |
 | Noise Recovery | Invalid sequence → ERROR → require ≥1 idle nibble (0) → IDLE |
+| IPv4 Proxying | IPv4Router forwards frames between redstone (Minecraft) and UDP (external hosts); inbound UDP payloads are parsed as frames and routed internally |

@@ -81,14 +81,8 @@ public class IPv4Router {
         socket.receive(packet);
         byte[] data = Arrays.copyOf(packet.getData(), packet.getLength());
 
-        byte[] srcIp = packet.getAddress().getAddress();
-        int srcPort = packet.getPort();
         IPv4Frame frame = IPv4Frame.fromSymbols(bytesToNibbles(data));
-        NetworkCore.LOGGER.info(
-            "Received UDP packet from {}:{}, sending frame {}",
-            Arrays.toString(srcIp),
-            srcPort,
-            frame);
+        NetworkCore.LOGGER.info("Received UDP packet, parsed frame {}", frame);
         DataRouter.server.execute(() -> DataRouter.sendFrame(frame));
       } catch (IOException e) {
         if (running) {
