@@ -291,12 +291,7 @@ Currently implemented:
 - txFramesDropped
 - rxFramesEmitted
 - txFramingErrors
-
-Planned for future implementation:
-
 - rxOverflowDrops
-- unroutableFrames
-- loopbackFrames
 
 ---
 

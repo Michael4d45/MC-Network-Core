@@ -106,22 +106,6 @@ Alias root: `/networkcore` (`/nc` shortcut)
 - Validate IPv4 framing with `/function networkcore_test:test_ipv4_max_payload_src_192_168_1_25`
 - Extend by adding new `.mcfunction` files that leverage `/networkcore sendtest` to express nibble streams.
 
-## Counters & Telemetry (Current Scope)
-
-- `txFramesParsed`
-- `txFramesDropped` (reserved; may remain zero without TX ring)
-- `rxFramesEmitted`
-- `txFramingErrors`
-- `rxOverflowDrops`
-
-Planned: `unroutableFrames`, `loopbackFrames`.
-
-## Future Enhancements (Do Not Prematurely Implement Without Spec Alignment)
-
-- Expanded error counters & user-facing diagnostics
-- Checksum or integrity nibble(s)
-- Cross-chunk routing and multi-hop forwarding
-
 When implementing these, update README + protocol spec first to lock framing semantics.
 
 ## Version Bumping Procedure

@@ -18,7 +18,7 @@ Each `Network Core` block acts like a minimal network interface. It samples a re
 - Fixed nibble wire protocol (SOF=15, EOF=0, idle=0)
 - Data, Control, Status, IPv4 frame parsing & emission
 - Port allocation & persistence (0–65535 per world)
-- Counters: framing errors, frames parsed/emitted, RX overflow drops (via `/networkcore stats` & status frame flags)
+- Counters: txFramesParsed, txFramesDropped, rxFramesEmitted, txFramingErrors, rxOverflowDrops (via `/networkcore stats` & status frame flags)
 - IPv4 frame mapping (TYPE=3) including IP + UDP + in‑game addressing
 - Commands for low-level testing & inspection
 - Datapack with scripted frames (`networkcore_test/`)
@@ -106,7 +106,9 @@ Artifacts land in `build/libs/`.
 ## Versions
 
 - Minecraft 1.21.7
+- Yarn Mappings 1.21.7+build.8
 - Fabric Loader 0.17.2
+- Loom 1.11-SNAPSHOT
 - Fabric API 0.129.0+1.21.7
 - Java 21
 
