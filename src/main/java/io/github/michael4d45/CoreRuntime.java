@@ -268,12 +268,14 @@ public class CoreRuntime {
   }
 
   private static final class TxRuntime {
+
     TxFramerStateMachine.State state = TxFramerStateMachine.State.IDLE;
     List<Integer> buffer = new ArrayList<>();
     int expectedLength = 0;
   }
 
   private static final class RxRuntime {
+
     RxEmitterStateMachine.State state = RxEmitterStateMachine.State.IDLE;
     Frame currentFrame;
     int[] symbols;
