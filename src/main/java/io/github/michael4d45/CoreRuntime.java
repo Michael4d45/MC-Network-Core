@@ -66,30 +66,49 @@ public class CoreRuntime {
     NetworkCore.LOGGER.info("Processing control frame: {}", controlFrame);
     switch (controlFrame.opcode) {
       case 0x0 -> // NOP
-          // Idle/resync assist - no action needed
+      // Idle/resync assist - no action needed
+      {
+        if (controlFrame.getArgs().length != 0) {
+          NetworkCore.LOGGER.warn(
+              "Invalid NOP control frame: expected 0 args, got {}", controlFrame.getArgs().length);
+        } else {
           NetworkCore.LOGGER.debug("NOP control frame");
+        }
+      }
 
       case 0x1 -> {
         // RESET
         // Flush TX/RX, clear errors
-        ingress.state = TxFramerStateMachine.State.IDLE;
-        ingress.buffer.clear();
-        ingress.expectedLength = 0;
-        egress.state = RxEmitterStateMachine.State.IDLE;
-        egress.currentFrame = null;
-        egress.symbols = null;
-        egress.position = 0;
-        egress.lastOutputPower = 0;
-        rxQueue.clear();
-        NetworkCore.LOGGER.info("RESET control frame processed");
+        if (controlFrame.getArgs().length != 0) {
+          NetworkCore.LOGGER.warn(
+              "Invalid RESET control frame: expected 0 args, got {}",
+              controlFrame.getArgs().length);
+        } else {
+          ingress.state = TxFramerStateMachine.State.IDLE;
+          ingress.buffer.clear();
+          ingress.expectedLength = 0;
+          egress.state = RxEmitterStateMachine.State.IDLE;
+          egress.currentFrame = null;
+          egress.symbols = null;
+          egress.position = 0;
+          egress.lastOutputPower = 0;
+          rxQueue.clear();
+          NetworkCore.LOGGER.info("RESET control frame processed");
+        }
       }
 
       case 0x2 -> // MODEQ - Request status frame
       // Generate and queue status frame for RX
       {
-        int port = be.getPort();
-        int worldId = be.getWorldId();
-        queueStatusFrame(worldId, port);
+        if (controlFrame.getArgs().length != 0) {
+          NetworkCore.LOGGER.warn(
+              "Invalid MODEQ control frame: expected 0 args, got {}",
+              controlFrame.getArgs().length);
+        } else {
+          int port = be.getPort();
+          int worldId = be.getWorldId();
+          queueStatusFrame(worldId, port);
+        }
       }
 
       case 0x3 -> {
@@ -114,13 +133,19 @@ public class CoreRuntime {
 
       case 0x4 -> // STATSCLR - Clear counters
       {
-        txFramesParsed = 0;
-        txFramesDropped = 0;
-        txFramingErrors = 0;
-        rxFramesEmitted = 0;
-        rxOverflowDrops = 0;
-        recomputeErrorFlags();
-        NetworkCore.LOGGER.info("STATSCLR control frame processed");
+        if (controlFrame.getArgs().length != 0) {
+          NetworkCore.LOGGER.warn(
+              "Invalid STATSCLR control frame: expected 0 args, got {}",
+              controlFrame.getArgs().length);
+        } else {
+          txFramesParsed = 0;
+          txFramesDropped = 0;
+          txFramingErrors = 0;
+          rxFramesEmitted = 0;
+          rxOverflowDrops = 0;
+          recomputeErrorFlags();
+          NetworkCore.LOGGER.info("STATSCLR control frame processed");
+        }
       }
 
       default -> NetworkCore.LOGGER.warn("Unknown control frame opcode {}", controlFrame.opcode);
