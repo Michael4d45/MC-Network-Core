@@ -28,8 +28,6 @@ networkcore sendtest 0
 networkcore sendtest 2
 networkcore sendtest 10
 # SRC_IP
-networkcore sendtest 0
-networkcore sendtest 0
 networkcore sendtest 7
 networkcore sendtest 15
 networkcore sendtest 0
