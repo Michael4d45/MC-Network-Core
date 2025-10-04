@@ -103,14 +103,15 @@ public class NetworkCoreEntity extends BlockEntity {
     }
 
     // Clock gating: only advance tickCounter when CLOCK_ACTIVE is true (level-triggered).
-    boolean clockNow = state.getOrEmpty(NetworkCoreBlock.CLOCK_ACTIVE).orElse(false);
-    if (clockNow) {
-      int transmitPower = NetworkCoreBlock.getTransmitPower(state);
-      be.runtime.processTxSymbol(be, transmitPower);
-      be.runtime.processRxOutput();
-      int receivePower = be.runtime.getLastOutputPower();
-      NetworkCoreBlock.setReceivePowering(serverWorld, pos, state, receivePower);
+    if (!state.getOrEmpty(NetworkCoreBlock.CLOCK_ACTIVE).orElse(false)) {
+      return;
     }
+
+    int transmitPower = state.get(NetworkCoreBlock.TRANSMIT_POWERED);
+    be.runtime.processTxSymbol(be, transmitPower);
+    be.runtime.processRxOutput();
+    int receivePower = be.runtime.getLastOutputPower();
+    NetworkCoreBlock.setReceivePowering(serverWorld, pos, state, receivePower);
   }
 
   public void sendFrame(Frame frame) {

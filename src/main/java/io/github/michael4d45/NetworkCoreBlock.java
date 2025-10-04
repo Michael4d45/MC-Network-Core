@@ -1,5 +1,9 @@
 package io.github.michael4d45;
 
+import org.jetbrains.annotations.Nullable;
+
+import com.mojang.serialization.MapCodec;
+
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockState;
 import net.minecraft.block.BlockWithEntity;
@@ -20,9 +24,6 @@ import net.minecraft.util.math.Direction;
 import net.minecraft.world.BlockView;
 import net.minecraft.world.World;
 import net.minecraft.world.block.WireOrientation;
-
-import com.mojang.serialization.MapCodec;
-import org.jetbrains.annotations.Nullable;
 
 /** Network Core block. */
 public class NetworkCoreBlock extends BlockWithEntity {
@@ -46,10 +47,6 @@ public class NetworkCoreBlock extends BlockWithEntity {
             .with(RECEIVE_ACTIVE, false)
             .with(TRANSMIT_ACTIVE, false)
             .with(CLOCK_ACTIVE, false));
-  }
-
-  public static int getTransmitPower(BlockState state) {
-    return state.get(TRANSMIT_POWERED);
   }
 
   @Override
