@@ -91,18 +91,14 @@ public class NetworkCoreEntity extends BlockEntity {
     }
 
     // Skip ticking when:
-    // 1. Singleplayer pause menu is open (integrated server paused)
-    // 2. Global tick freeze is active (/tick freeze)
+    // 1. Odd ticks (redstone ticks are every 2 game ticks)
+    // 2. Singleplayer pause menu is open (integrated server paused)
+    // 3. Global tick freeze is active (/tick freeze)
     var server = serverWorld.getServer();
-    // Integrated server pause (singleplayer ESC menu) - server stops most ticks, this is an extra
-    // guard
-    if (server.isPaused()) {
-      return;
-    }
-
-    // Tick freeze (debug /tick freeze). Allow ticking when a step is being executed.
     var tickManager = server.getTickManager();
-    if (tickManager.isFrozen() && !tickManager.shouldTick()) {
+    if (world.getTime() % 2 != 0
+        || server.isPaused()
+        || (tickManager.isFrozen() && !tickManager.shouldTick())) {
       return;
     }
 
