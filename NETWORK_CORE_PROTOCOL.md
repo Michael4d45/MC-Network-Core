@@ -116,7 +116,7 @@ TYPE (1)
 OP (0–14)
 LEN_HI (0–15)
 LEN_LO (0–15)
-ARG[...] (LEN - 1 nibbles)
+ARG[...] (LEN nibbles)
 EOF (0)
 ```
 
@@ -168,7 +168,7 @@ A    (ARG[3] = low-low nibble = 0xA)
 - **SOF (15):** Marks start of frame
 - **TYPE = 1:** Control frame
 - **OP = 4:** The SETPORT opcode
-- **LEN = 4:** Payload length = 4 nibbles (OP + 4 ARG)
+- **LEN = 4:** ARG length = 4 nibbles
 - **ARG[0] = 0x0:** High-high nibble of the port number
 - **ARG[1] = 0x0:** High-low nibble of the port number
 - **ARG[2] = 0x2:** Low-high nibble of the port number
@@ -179,9 +179,9 @@ A    (ARG[3] = low-low nibble = 0xA)
 
 ### 3.3 Status Frame (TYPE=2, LEN=8)
 
-Status frames are requested via the MODEQ control frame but are not yet implemented in the current version.
+Status frames are requested via the MODEQ control frame.
 
-Proposed format when implemented:
+Format:
 
 ```
 SOF (15)
@@ -300,9 +300,9 @@ Planned for future implementation:
 
 ## 7. Configuration Knobs
 
-| Name                | Storage | Default | Range   | Purpose                             |
-| ------------------- | ------- | ------- | ------- | ----------------------------------- |
-| port                | NBT     | 0       | 0–65535 | NIC's own port ID for frames        |
+| Name | Storage | Default | Range   | Purpose                      |
+| ---- | ------- | ------- | ------- | ---------------------------- |
+| port | NBT     | 0       | 0–65535 | NIC's own port ID for frames |
 
 ---
 
@@ -321,7 +321,7 @@ Bitfield:
 | --- | --- |
 | EOF Handling | Exactly one 0 nibble terminates frame. Idle = constant 0. |
 | Max Frame Length | 255 payload nibbles (LEN=255) |
-| Frame Types | 0=Data (with addresses), 1=Control, 2=Status (proposed), 3=IPv4 |
+| Frame Types | 0=Data (with addresses), 1=Control, 2=Status, 3=IPv4 |
 | Overflow | Drop newest frame, increment counter |
 | Status Frame Signature | First nibble = 0xA |
 | Port Header | DST_WORLD + DST_PORT (16 bits) + SRC_WORLD + SRC_PORT (16 bits) for Data frames; IPv4 frames include additional UDP ports |

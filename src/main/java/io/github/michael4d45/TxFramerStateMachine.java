@@ -76,7 +76,7 @@ public class TxFramerStateMachine {
               int lenHi = newBuffer.get(3);
               int lenLo = newBuffer.get(4);
               int expLen = (lenHi << 4) | lenLo;
-              if (expLen >= 1) {
+              if (expLen >= 0) {
                 return new Result(State.DATA, newBuffer, null, false, expLen);
               } else {
                 NetworkCore.LOGGER.warn("Invalid length in control frame: " + expLen);

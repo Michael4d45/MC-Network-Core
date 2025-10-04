@@ -24,7 +24,7 @@ public class ControlFrame extends Frame {
 
   @Override
   public int[] buildSymbols() {
-    int len = 1 + args.length; // OP + args
+    int len = args.length;
     int[] symbols = new int[5 + args.length];
     symbols[0] = 15; // SOF
     symbols[1] = 1; // TYPE
@@ -48,7 +48,7 @@ public class ControlFrame extends Frame {
     }
     int opcode = symbols[2];
     int len = (symbols[3] << 4) | symbols[4];
-    if (len < 1 || len != symbols.length - 6) {
+    if (len < 0 || len != symbols.length - 6) {
       throw new IllegalArgumentException("Invalid symbols for ControlFrame: length mismatch");
     }
     if (symbols[symbols.length - 1] != 0) {
