@@ -15,7 +15,7 @@ public class CoreRuntime {
   // Capacity for RX queue (frames pending emission). Status frames, routed frames, IPv4 frames
   // all share this. Drops increment overflow counter / bit.
   // When full, local senders receive BLOCK_BUSY (Data Control 0x3).
-  // IPv4 senders receive TARGET_BUSY (IPv4 Control 0x7).
+  // IPv4 senders receive TARGET_BUSY (IPv4 Control 0xC).
   private static final int RX_QUEUE_CAPACITY = 64;
 
   // Telemetry counters (server-thread only, no sync needed)
