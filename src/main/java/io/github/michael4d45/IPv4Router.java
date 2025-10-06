@@ -137,10 +137,10 @@ public class IPv4Router {
    *
    * <p>Example: [0xF, 0x3, 0xA] → bytes [0xF3, 0xA0]
    *
-   * <p>This padding is symmetric with bytesToNibbles and preserves EOF semantics: Frame.buildSymbols()
-   * always produces arrays ending with EOF=0. If the frame has an odd number of nibbles (excluding
-   * SOF/EOF), the padding creates an even-length byte array where the trailing 0 nibble matches EOF,
-   * ensuring correct parsing on the receiving end.
+   * <p>This padding is symmetric with bytesToNibbles and preserves EOF semantics:
+   * Frame.buildSymbols() always produces arrays ending with EOF=0. If the frame has an odd number
+   * of nibbles (excluding SOF/EOF), the padding creates an even-length byte array where the
+   * trailing 0 nibble matches EOF, ensuring correct parsing on the receiving end.
    *
    * @param nibbles array of 4-bit values (0-15)
    * @return byte array with length ⌈nibbles.length / 2⌉

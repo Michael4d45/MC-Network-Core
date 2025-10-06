@@ -31,8 +31,7 @@ public class NetworkCoreEntity extends BlockEntity {
   }
 
   public void setPort(int port) {
-    World world = getWorld();
-    if (!(world instanceof ServerWorld serverWorld)) {
+    if (!(getWorld() instanceof ServerWorld serverWorld)) {
       NetworkCore.LOGGER.warn("Cannot set port on client side");
       return;
     }

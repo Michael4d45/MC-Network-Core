@@ -18,7 +18,7 @@ import net.minecraft.world.World;
  */
 public class NetworkCorePortState {
   // Allocation entry combining position and dimension
-  static class PortAllocation {
+  public static class PortAllocation {
     final BlockPos pos;
     final RegistryKey<World> dimension;
 
@@ -61,8 +61,7 @@ public class NetworkCorePortState {
                   c.getInt("X").orElse(0), c.getInt("Y").orElse(0), c.getInt("Z").orElse(0));
           // Migration: if no Dimension field, assume Overworld
           String dimStr = c.getString("Dimension").orElse("minecraft:overworld");
-          RegistryKey<World> dimension =
-              RegistryKey.of(RegistryKeys.WORLD, Identifier.of(dimStr));
+          RegistryKey<World> dimension = RegistryKey.of(RegistryKeys.WORLD, Identifier.of(dimStr));
           PortAllocation alloc = new PortAllocation(pos, dimension);
           state.byPort[port] = alloc;
           state.byPos.put(alloc, port);
