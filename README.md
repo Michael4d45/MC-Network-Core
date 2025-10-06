@@ -16,17 +16,15 @@ Each `Network Core` block acts like a minimal network interface. When placed, it
 ## Implemented Frame Types
 
 - TYPE=0 Data (with application-defined CODE field)
-- TYPE=1 Data Control (NOP, PORT_UNREACHABLE, MALFORMED_FRAME, BLOCK_BUSY, ECHO_REQUEST, ECHO_REPLY, MODEQ, RESET, SETPORT)
-- TYPE=2 Status (8‑nibble payload emitted on MODEQ)
-- TYPE=3 IPv4 (encapsulates Data/DataControl/Status frames, bridged via UDP)
-- TYPE=4 IPv4 Control (NETWORK_UNREACHABLE, HOST_UNREACHABLE, PORT_UNREACHABLE, ECHO_REQUEST, ECHO_REPLY, PARAMETER_PROBLEM, MODEQ, TARGET_BUSY)
+- TYPE=1 Data Control (NOP, PORT_UNREACHABLE, MALFORMED_FRAME, BLOCK_BUSY, ECHO_REQUEST, ECHO_REPLY, MODEQ, RESET, SETPORT, STATUS_REPLY, HOST_UNREACHABLE, NETWORK_ERROR, TARGET_BUSY)
+- TYPE=3 IPv4 (encapsulates Data/Data Control frames, bridged via UDP)
 
 ## Current Features
 
 - Fixed nibble wire protocol (SOF=15, EOF=0, idle=0)
 - Data, Control, Status, IPv4 frame parsing & emission
 - Port allocation & persistence (0–65535 per world)
-- Counters: txFramesParsed, rxFramesEmitted, txFramingErrors, rxOverflowDrops (via `/networkcore stats` & status frame flags)
+- Counters: txFramesParsed, rxFramesEmitted, txFramingErrors, rxOverflowDrops (via `/networkcore stats` & STATUS_REPLY frame)
 - IPv4 frame mapping (TYPE=3) including IP + UDP + in‑game addressing
 - Commands for low-level testing & inspection
 - Datapack with scripted frames (`networkcore_test/`)
@@ -37,8 +35,6 @@ You can craft the Network Core block with a shaped recipe:
 
 Pattern (Crafting Table 3×3):
 
-|  |  |  |
-| --- | --- | --- |
 | <img src="https://minecraft.wiki/images/Invicon_Iron_Ingot.png" alt="Iron Ingot" width="32" /> | <img src="https://minecraft.wiki/images/Invicon_Redstone.png" alt="Redstone Dust" width="32" /> | <img src="https://minecraft.wiki/images/Invicon_Iron_Ingot.png" alt="Iron Ingot" width="32" /> |
 | <img src="https://minecraft.wiki/images/Invicon_Redstone.png" alt="Redstone Dust" width="32" /> | <img src="https://minecraft.wiki/images/Invicon_Redstone_Comparator.png" alt="Comparator" width="32" /> | <img src="https://minecraft.wiki/images/Invicon_Redstone.png" alt="Redstone Dust" width="32" /> |
 | <img src="https://minecraft.wiki/images/Invicon_Iron_Ingot.png" alt="Iron Ingot" width="32" /> | <img src="https://minecraft.wiki/images/Invicon_Redstone.png" alt="Redstone Dust" width="32" /> | <img src="https://minecraft.wiki/images/Invicon_Iron_Ingot.png" alt="Iron Ingot" width="32" /> |

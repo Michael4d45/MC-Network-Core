@@ -28,9 +28,8 @@ This will copy the datapack to `run/saves/New World/datapacks/networkcore_test`.
 - networkcore_test:test_ipv4_from_with_payload (IPv4 TYPE=3 LEN=0x26, inbound DataFrame payload [0x0A,0x0B])
 - networkcore_test:test_ipv4_max_payload (IPv4 raw payload LEN=0xE3 helper cycles)
 - networkcore_test:test_ipv4_max_payload_src_192_168_1_25 (IPv4 encapsulated DataFrame LEN=0xE3)
-- networkcore_test:test_status_basic (Standalone StatusFrame LEN=0x08)
-- networkcore_test:test_ipv4_control_echo_request (IPv4 Control ECHO_REQUEST)
-- networkcore_test:test_ipv4_control_network_unreachable (IPv4 Control NETWORK_UNREACHABLE)
+- networkcore_test:test_ipv4_data_control_echo_reply (IPv4-encapsulated Data Control ECHO_REPLY)
+- networkcore_test:test_ipv4_data_control_modeq (IPv4-encapsulated Data Control MODEQ)
 
 ## Removed
 

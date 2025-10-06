@@ -51,7 +51,7 @@ Before committing or releasing:
    - Receive side emits power updates only when frame emission output changes
    - Clock gating works: block processes symbols only when clock faces powered
 4. Commands function (see Commands section) – especially `sendtest`, `listports`, `udpaddress`, `stats`
-5. Protocol invariants: SOF=15, EOF=0, idle=0 upheld; Data(0), Control(1), Status(2), IPv4(3), IPv4Control(4) frames parse
+5. Protocol invariants: SOF=15, EOF=0, idle=0 upheld; Data(0), Data Control(1), IPv4(3) frames parse
 6. Counters increment appropriately for framing errors, frames parsed/emitted, drops (verify via logs or temporary debug output)
 7. No missing resources (logs free of "missing model" / magenta blocks)
 8. World save/load cycle:
@@ -98,16 +98,16 @@ Before committing or releasing:
 
 ## Protocol & Runtime Notes
 
-- Frame Types implemented: 0 (Data), 1 (Control), 2 (Status), 3 (IPv4), 4 (IPv4 Control).
-- Data Control codes: NOP, PORT_UNREACHABLE, MALFORMED_FRAME (accepted but not emitted), BLOCK_BUSY, ECHO_REQUEST, ECHO_REPLY, MODEQ, RESET, SETPORT
-- IPv4 Control codes: NETWORK_UNREACHABLE, HOST_UNREACHABLE, PORT_UNREACHABLE, ECHO_REQUEST, ECHO_REPLY, PARAMETER_PROBLEM, MODEQ, TARGET_BUSY
+- Frame Types implemented: 0 (Data), 1 (Data Control), 3 (IPv4).
+- Data Control codes: NOP, PORT_UNREACHABLE, MALFORMED_FRAME (accepted but not emitted), BLOCK_BUSY, ECHO_REQUEST, ECHO_REPLY, MODEQ, RESET, SETPORT, STATUS_REPLY, HOST_UNREACHABLE, NETWORK_ERROR, TARGET_BUSY
+- Remote diagnostics: IPv4 frames encapsulate Data or Data Control frames for cross-instance communication and error reporting
 - Max payload length: 255 nibbles (LEN=0xFF) for all frame types
 - Data frame LEN field: Counts **total args** (8 port nibbles + payload), consistent with all other frame types. Max payload = 247 nibbles.
 - Data frame CODE field: Must be 0x0 for standard frames; non-zero values reserved and will log warnings.
-- IPv4 frame structure: 24 nibbles addressing + 4 nibbles inner header + inner payload
+- IPv4 frame structure: 24 nibbles addressing + 4 nibbles inner header + inner payload; encapsulates Data or Data Control frames only
 - Idle line: continuous 0 nibbles; EOF also 0 (context distinguishes end vs idle)
 - SOF strictly 15; parser remains in IDLE until SOF observed
-- Status frames (TYPE=2) emitted on MODEQ control frame; payload matches spec (signature + port + RX depth + error flags).
+- STATUS_REPLY (Data Control code 0x9) emitted on MODEQ; 20-nibble payload (signature + 4 port nibbles + 2 RX depth nibbles + error flags + 8 IPv4 nibbles + 4 UDP port nibbles).
 - Error flags: bit0=RX_OVERFLOW, bit1=TX_FRAMING_ERR, bit2=PORT_ALLOC_FAILURE (reserved), bit3=IPV4_ROUTING_FAILURE (reserved)
 - Frame ordering: FIFO processing, no priority between frame types, IPv4-delivered frames queued via `DataRouter.server.execute()`
 

@@ -1,5 +1,9 @@
 package io.github.michael4d45;
 
+import org.jetbrains.annotations.Nullable;
+
+import com.mojang.serialization.MapCodec;
+
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockState;
 import net.minecraft.block.BlockWithEntity;
@@ -21,9 +25,6 @@ import net.minecraft.world.BlockView;
 import net.minecraft.world.World;
 import net.minecraft.world.block.WireOrientation;
 
-import com.mojang.serialization.MapCodec;
-import org.jetbrains.annotations.Nullable;
-
 /** Network Core block. */
 public class NetworkCoreBlock extends BlockWithEntity {
 
@@ -35,8 +36,6 @@ public class NetworkCoreBlock extends BlockWithEntity {
   // Visual feedback: RECEIVE_ACTIVE and TRANSMIT_ACTIVE properties are used for rendering.
   // Block models and textures are defined in src/main/resources/assets/network-core/
   public static final BooleanProperty CLOCK_ACTIVE = BooleanProperty.of("clock_active");
-
-  @SuppressWarnings("hiding")
   public static final MapCodec<NetworkCoreBlock> CODEC = createCodec(NetworkCoreBlock::new);
 
   public NetworkCoreBlock(Settings settings) {
@@ -117,7 +116,7 @@ public class NetworkCoreBlock extends BlockWithEntity {
   @Override
   public void onStateReplaced(BlockState state, ServerWorld world, BlockPos pos, boolean moved) {
     if (!world.isClient) {
-      DataRouter.release(pos);
+      DataRouter.release(pos, world);
     }
     super.onStateReplaced(state, world, pos, moved);
   }

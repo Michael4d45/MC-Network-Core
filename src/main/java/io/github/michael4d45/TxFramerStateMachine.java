@@ -128,13 +128,7 @@ public class TxFramerStateMachine {
     return switch (type) {
       case 0 -> DataFrame.from(code, args);
       case 1 -> DataControlFrame.from(code, args);
-      case 2 -> StatusFrame.from(code, args);
       case 3 -> IPv4Frame.from(code, args);
-      case 4 ->
-          // In-game parsing: UDP ports are unknown at parse time and set to -1.
-          // IPv4Router will extract actual ports from DatagramPacket metadata or resolve
-          // them from routing context when sending over the network.
-          IPv4ControlFrame.from(code, args, -1, -1);
       default -> throw new IllegalArgumentException("Unknown frame type: " + type);
     };
   }

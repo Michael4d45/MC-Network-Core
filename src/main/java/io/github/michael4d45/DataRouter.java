@@ -88,23 +88,35 @@ public final class DataRouter {
           }
         }
         case DataControlFrame controlFrame -> {
-          int targetPort = frame.getDstUdpPort();
-          NetworkCoreEntity destination = getBlockEntityByPort(targetPort);
+          // Process remote Data Control frame instead of sending locally
+          NetworkCoreEntity destination = getBlockEntityByPort(frame.getDstUdpPort());
           if (destination != null && !destination.isRemoved()) {
-            if (!destination.sendFrame(controlFrame)) {
-              // Queue full, send TARGET_BUSY back
-              emitIpv4TargetBusy(frame, targetPort);
-            }
+            destination.processRemoteDataControlFrame(
+                controlFrame,
+                frame.getSrcIp(),
+                frame.getSrcUdpPort(),
+                frame.getDstIp(),
+                frame.getDstUdpPort());
           } else {
             NetworkCore.LOGGER.warn(
                 "No NetworkCore listening on port {} for IPv4 control frame (code={})",
-                targetPort,
+                frame.getDstUdpPort(),
                 controlFrame.getCode());
-            emitIpv4PortUnreachable(frame, targetPort);
+            // For remote control, perhaps don't send error back, or send HOST_UNREACHABLE
+            // But since it's control to a port, if port not found, maybe send PORT_UNREACHABLE
+            // encapsulated
+            DataControlFrame errorControl =
+                new DataControlFrame(0x1, encodePort(frame.getDstUdpPort()));
+            IPv4Frame response =
+                new IPv4Frame(
+                    frame.getSrcIp(),
+                    frame.getSrcUdpPort(),
+                    frame.getDstIp(),
+                    frame.getDstUdpPort(),
+                    errorControl);
+            IPv4Router.sendFrame(response);
           }
         }
-        case StatusFrame statusFrame -> // Status frame received over IPv4 - log it
-            NetworkCore.LOGGER.info("Received status over IPv4: {}", statusFrame);
         default ->
             NetworkCore.LOGGER.warn(
                 "IPv4 frame encapsulates unsupported frame type: {}", encapsulated);
@@ -112,45 +124,47 @@ public final class DataRouter {
     }
   }
 
-  public static int registerExisting(BlockPos pos, int desiredPort) {
-    return allocation.claim(pos, desiredPort);
+  public static int registerExisting(BlockPos pos, ServerWorld world, int desiredPort) {
+    return allocation.claim(pos, world.getRegistryKey(), desiredPort);
   }
 
-  public static int requestPort(BlockPos pos, int desiredPort) {
-    return allocation.reassign(pos, desiredPort);
+  public static int requestPort(BlockPos pos, ServerWorld world, int desiredPort) {
+    return allocation.reassign(pos, world.getRegistryKey(), desiredPort);
   }
 
   public static NetworkCoreEntity getBlockEntityByPort(int port) {
     if (port < MIN_PORT || port > MAX_PORT) {
       return null;
     }
-    BlockPos pos = allocation.getPosByPort(port);
-    if (pos == null) {
+    NetworkCorePortState.PortAllocation alloc = allocation.getAllocationByPort(port);
+    if (alloc == null) {
       return null;
     }
-    for (ServerWorld world : server.getWorlds()) {
-      if (world.getBlockEntity(pos) instanceof NetworkCoreEntity nbe) {
-        if (nbe.getPort() == port) {
-          return nbe;
-        }
+    // Directly look up in the correct world using stored dimension
+    ServerWorld world = server.getWorld(alloc.dimension);
+    if (world != null && world.getBlockEntity(alloc.pos) instanceof NetworkCoreEntity nbe) {
+      if (nbe.getPort() == port) {
+        return nbe;
       }
     }
     // Block entity missing or port changed; clean up allocation
-    allocation.release(pos);
+    allocation.release(alloc.pos, alloc.dimension);
     return null;
   }
 
-  public static void release(BlockPos pos) {
-    allocation.release(pos);
+  public static void release(BlockPos pos, ServerWorld world) {
+    allocation.release(pos, world.getRegistryKey());
   }
 
   public static Map<BlockPos, Integer> getAllocatedPorts(ServerWorld world) {
     Map<BlockPos, Integer> result = new HashMap<>();
     for (var entry : allocation.byPos.entrySet()) {
-      BlockPos pos = entry.getKey();
+      NetworkCorePortState.PortAllocation alloc = entry.getKey();
       int port = entry.getValue();
-      if (world.getBlockEntity(pos) instanceof NetworkCoreEntity) {
-        result.put(pos, port);
+      // Only include allocations from the requested world
+      if (alloc.dimension.equals(world.getRegistryKey())
+          && world.getBlockEntity(alloc.pos) instanceof NetworkCoreEntity) {
+        result.put(alloc.pos, port);
       }
     }
     return result;
@@ -236,13 +250,16 @@ public final class DataRouter {
       return;
     }
     int safePort = Math.max(0, Math.min(0xFFFF, port));
-    IPv4Router.sendControlFrameTo(
-        frame.getSrcIp(),
-        frame.getSrcUdpPort(),
-        frame.getDstIp(),
-        frame.getDstUdpPort(),
-        0x2,
-        encodePort(safePort));
+    // Send PORT_UNREACHABLE (Data Control code 0x1) encapsulated in IPv4 frame
+    DataControlFrame errorControl = new DataControlFrame(0x1, encodePort(safePort));
+    IPv4Frame response =
+        new IPv4Frame(
+            frame.getSrcIp(),
+            frame.getSrcUdpPort(),
+            frame.getDstIp(),
+            frame.getDstUdpPort(),
+            errorControl);
+    IPv4Router.sendFrame(response);
   }
 
   private static void emitIpv4TargetBusy(IPv4Frame frame, int port) {
@@ -250,13 +267,16 @@ public final class DataRouter {
       return;
     }
     int safePort = Math.max(0, Math.min(0xFFFF, port));
-    IPv4Router.sendControlFrameTo(
-        frame.getSrcIp(),
-        frame.getSrcUdpPort(),
-        frame.getDstIp(),
-        frame.getDstUdpPort(),
-        0x7,
-        encodePort(safePort));
+    // Send TARGET_BUSY (Data Control code 0xC) encapsulated in IPv4 frame
+    DataControlFrame errorControl = new DataControlFrame(0xC, encodePort(safePort));
+    IPv4Frame response =
+        new IPv4Frame(
+            frame.getSrcIp(),
+            frame.getSrcUdpPort(),
+            frame.getDstIp(),
+            frame.getDstUdpPort(),
+            errorControl);
+    IPv4Router.sendFrame(response);
   }
 
   private static int[] encodePort(int port) {

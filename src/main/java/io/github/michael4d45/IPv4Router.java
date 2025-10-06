@@ -65,39 +65,23 @@ public class IPv4Router {
     switch (frame) {
       case IPv4Frame ipv4Frame -> {
         if (!sendUdp(ipv4Frame.getDstIp(), ipv4Frame.getDstUdpPort(), ipv4Frame.buildSymbols())) {
-          // Send HOST_UNREACHABLE back
-          IPv4ControlFrame errorFrame =
-              new IPv4ControlFrame(
-                  0x1, // HOST_UNREACHABLE
+          // Send HOST_UNREACHABLE (Data Control code 0xA) back
+          DataControlFrame errorControl =
+              new DataControlFrame(0xA, encodeIp(ipv4Frame.getDstIp())); // HOST_UNREACHABLE
+          IPv4Frame errorFrame =
+              new IPv4Frame(
                   ipv4Frame.getSrcIp(),
-                  getLocalIpBytes(),
-                  encodeIp(ipv4Frame.getDstIp()), // unreachable IP
                   ipv4Frame.getSrcUdpPort(),
-                  udpPort);
-          sendControlFrame(errorFrame);
+                  getLocalIpBytes(),
+                  udpPort,
+                  errorControl);
+          sendUdp(errorFrame.getDstIp(), errorFrame.getDstUdpPort(), errorFrame.buildSymbols());
         }
       }
-      case IPv4ControlFrame ipv4ControlFrame -> sendControlFrame(ipv4ControlFrame);
       default ->
           NetworkCore.LOGGER.warn(
               "Unsupported frame type for IPv4Router: {}", frame.getClass().getSimpleName());
     }
-  }
-
-  public static void sendControlFrameTo(
-      byte[] dstIp, int dstUdpPort, byte[] srcIp, int srcUdpPort, int code, int[] payloadArgs) {
-    if (socket == null) {
-      NetworkCore.LOGGER.warn("IPv4Router not initialized, cannot send control frame");
-      return;
-    }
-    if (dstIp == null || dstIp.length != 4) {
-      NetworkCore.LOGGER.warn("Invalid destination IP for IPv4 control frame");
-      return;
-    }
-    byte[] resolvedSrc = (srcIp == null || srcIp.length != 4) ? getLocalIpBytes() : srcIp.clone();
-    IPv4ControlFrame frame =
-        new IPv4ControlFrame(code, dstIp, resolvedSrc, payloadArgs, dstUdpPort, srcUdpPort);
-    sendControlFrame(frame);
   }
 
   private static void receiveLoop() {
@@ -109,32 +93,28 @@ public class IPv4Router {
         byte[] data = Arrays.copyOf(packet.getData(), packet.getLength());
 
         int[] nibbles = bytesToNibbles(data);
-        Frame frame = parseFrameFromNibbles(nibbles, packet.getPort(), udpPort);
+        Frame frame = parseFrameFromNibbles(nibbles);
         if (frame == null) {
-          // Send PARAMETER_PROBLEM back to sender
-          IPv4ControlFrame errorFrame =
-              new IPv4ControlFrame(
-                  0x5, // PARAMETER_PROBLEM
+          // Send NETWORK_ERROR (Data Control code 0xB) back to sender
+          DataControlFrame errorControl = new DataControlFrame(0xB, new int[0]); // NETWORK_ERROR
+          IPv4Frame errorFrame =
+              new IPv4Frame(
                   packet.getAddress().getAddress(),
-                  getLocalIpBytes(),
-                  new int[0], // no args
                   packet.getPort(),
-                  udpPort);
-          sendControlFrame(errorFrame);
+                  getLocalIpBytes(),
+                  udpPort,
+                  errorControl);
+          sendUdp(errorFrame.getDstIp(), errorFrame.getDstUdpPort(), errorFrame.buildSymbols());
           continue;
         }
         NetworkCore.LOGGER.info("Received UDP packet, parsed frame {}", frame);
         Frame finalFrame = frame;
-        DatagramPacket finalPacket = packet;
         var srv = DataRouter.server;
         if (srv != null) {
           srv.execute(
               () -> {
                 switch (finalFrame) {
                   case IPv4Frame ipv4Frame -> DataRouter.deliverIPv4Frame(ipv4Frame);
-                  case IPv4ControlFrame ipv4ControlFrame ->
-                      handleIPv4ControlFrame(
-                          ipv4ControlFrame, finalPacket.getAddress(), finalPacket.getPort());
                   default -> {}
                 }
               });
@@ -149,6 +129,22 @@ public class IPv4Router {
     }
   }
 
+  /**
+   * Converts a nibble array to bytes for UDP transmission.
+   *
+   * <p>Packs two nibbles per byte (high nibble in upper 4 bits, low nibble in lower 4 bits). For
+   * odd-length nibble arrays, the last byte's low nibble is padded with 0.
+   *
+   * <p>Example: [0xF, 0x3, 0xA] → bytes [0xF3, 0xA0]
+   *
+   * <p>This padding is symmetric with bytesToNibbles and preserves EOF semantics: Frame.buildSymbols()
+   * always produces arrays ending with EOF=0. If the frame has an odd number of nibbles (excluding
+   * SOF/EOF), the padding creates an even-length byte array where the trailing 0 nibble matches EOF,
+   * ensuring correct parsing on the receiving end.
+   *
+   * @param nibbles array of 4-bit values (0-15)
+   * @return byte array with length ⌈nibbles.length / 2⌉
+   */
   private static byte[] nibblesToBytes(int[] nibbles) {
     int byteLen = (nibbles.length + 1) / 2; // Round up
     byte[] bytes = new byte[byteLen];
@@ -160,6 +156,19 @@ public class IPv4Router {
     return bytes;
   }
 
+  /**
+   * Unpacks bytes received from UDP into a nibble array.
+   *
+   * <p>Each byte is split into two nibbles (upper 4 bits → first nibble, lower 4 bits → second
+   * nibble). This is the inverse of nibblesToBytes.
+   *
+   * <p>The returned array always has even length (bytes.length * 2). Any padding added by
+   * nibblesToBytes for odd-length frames is preserved, ensuring the trailing EOF nibble (0) is
+   * correctly recognized by the frame parser.
+   *
+   * @param bytes UDP packet data
+   * @return nibble array with length = bytes.length * 2
+   */
   private static int[] bytesToNibbles(byte[] bytes) {
     int[] nibbles = new int[bytes.length * 2];
     for (int i = 0; i < bytes.length; i++) {
@@ -184,109 +193,8 @@ public class IPv4Router {
     }
   }
 
-  private static boolean sendUdp(int[] symbols, InetAddress address, int port) {
-    try {
-      byte[] data = nibblesToBytes(symbols);
-      DatagramPacket packet = new DatagramPacket(data, data.length, address, port);
-      socket.send(packet);
-      NetworkCore.LOGGER.info("Sent UDP packet to {}:{} with {} bytes", address, port, data.length);
-      return true;
-    } catch (IOException e) {
-      NetworkCore.LOGGER.error("Failed to send UDP packet", e);
-      return false;
-    }
-  }
-
-  private static String formatIpFromArgs(int[] args) {
-    if (args.length < 8) return "invalid";
-    return String.format(
-        "%d.%d.%d.%d",
-        (args[0] << 4) | args[1],
-        (args[2] << 4) | args[3],
-        (args[4] << 4) | args[5],
-        (args[6] << 4) | args[7]);
-  }
-
-  private static int formatPortFromArgs(int[] args) {
-    if (args.length < 4) return -1;
-    return (args[0] << 12) | (args[1] << 8) | (args[2] << 4) | args[3];
-  }
-
-  private static void handleIPv4ControlFrame(
-      IPv4ControlFrame frame, InetAddress remoteAddr, int remotePort) {
-    switch (frame.getCode()) {
-      case 0x0 -> // NETWORK_UNREACHABLE
-          NetworkCore.LOGGER.warn(
-              "Received NETWORK_UNREACHABLE from {}:{} targeting {}",
-              remoteAddr,
-              remotePort,
-              formatIpFromArgs(frame.getArgs()));
-      case 0x1 -> // HOST_UNREACHABLE
-          NetworkCore.LOGGER.warn(
-              "Received HOST_UNREACHABLE from {}:{} - {}",
-              remoteAddr,
-              remotePort,
-              formatIpFromArgs(frame.getArgs()));
-      case 0x2 -> // PORT_UNREACHABLE
-          NetworkCore.LOGGER.warn(
-              "Received PORT_UNREACHABLE from {}:{} - port {}",
-              remoteAddr,
-              remotePort,
-              formatPortFromArgs(frame.getArgs()));
-      case 0x3 -> { // ECHO_REQUEST
-        IPv4ControlFrame reply =
-            new IPv4ControlFrame(
-                0x4, frame.getSrcIp(), getLocalIpBytes(), frame.getArgs(), remotePort, udpPort);
-        sendControlFrame(reply);
-      }
-      case 0x4 -> // ECHO_REPLY
-          NetworkCore.LOGGER.info(
-              "Received ECHO_REPLY from {}:{} with payload {}",
-              remoteAddr,
-              remotePort,
-              Arrays.toString(frame.getArgs()));
-      case 0x5 -> // PARAMETER_PROBLEM
-          NetworkCore.LOGGER.warn("Received PARAMETER_PROBLEM from {}:{}", remoteAddr, remotePort);
-      case 0x6 -> { // MODEQ
-        // Send back status information
-        int errorFlags = (socket == null || !running) ? 1 : 0; // 1 if not initialized
-        StatusFrame statusFrame = new StatusFrame(udpPort, 0, 0, errorFlags);
-        IPv4Frame responseFrame =
-            new IPv4Frame(frame.getSrcIp(), remotePort, getLocalIpBytes(), udpPort, statusFrame);
-        sendUdp(
-            responseFrame.getDstIp(), responseFrame.getDstUdpPort(), responseFrame.buildSymbols());
-      }
-      case 0x7 -> // TARGET_BUSY
-          NetworkCore.LOGGER.warn(
-              "Received TARGET_BUSY from {}:{} - port {}",
-              remoteAddr,
-              remotePort,
-              formatPortFromArgs(frame.getArgs()));
-      default ->
-          NetworkCore.LOGGER.warn(
-              "Received unknown IPv4 control code {} from {}:{}",
-              frame.getCode(),
-              remoteAddr,
-              remotePort);
-    }
-  }
-
-  private static void sendControlFrame(IPv4ControlFrame frame) {
-    try {
-      InetAddress address = InetAddress.getByAddress(frame.getDstIp());
-      int port = frame.getDstUdpPort();
-      if (!sendUdp(frame.buildSymbols(), address, port)) {
-        NetworkCore.LOGGER.error("Failed to send IPv4 control frame to {}:{}", address, port);
-      }
-    } catch (UnknownHostException e) {
-      NetworkCore.LOGGER.error("Invalid destination IP for IPv4 control frame", e);
-    }
-  }
-
-  // Parses frame from UDP nibbles. Note: IPv4ControlFrame UDP port metadata (dstUdpPort,
-  // srcUdpPort)
-  // is extracted from the DatagramPacket and passed to the from() method for proper routing.
-  private static Frame parseFrameFromNibbles(int[] nibbles, int remoteSrcPort, int localDstPort) {
+  // Parses frame from UDP nibbles. Only IPv4 frames are supported over UDP.
+  private static Frame parseFrameFromNibbles(int[] nibbles) {
     if (nibbles.length < 6) {
       NetworkCore.LOGGER.warn("UDP payload too short for frame");
       return null;
@@ -312,7 +220,6 @@ public class IPv4Router {
     try {
       return switch (type) {
         case 3 -> IPv4Frame.from(code, args);
-        case 4 -> IPv4ControlFrame.from(code, args, localDstPort, remoteSrcPort);
         default -> {
           NetworkCore.LOGGER.warn("Unsupported frame type {} received over UDP", type);
           yield null;
@@ -329,6 +236,21 @@ public class IPv4Router {
       return "Not initialized";
     }
     return "localhost:" + udpPort;
+  }
+
+  public static int getUdpPort() {
+    return udpPort;
+  }
+
+  public static byte[] getLocalIp() {
+    if (localAddress != null) {
+      return localAddress.getAddress();
+    }
+    try {
+      return InetAddress.getByName("127.0.0.1").getAddress();
+    } catch (UnknownHostException e) {
+      return new byte[] {127, 0, 0, 1};
+    }
   }
 
   private static int[] encodeIp(byte[] address) {

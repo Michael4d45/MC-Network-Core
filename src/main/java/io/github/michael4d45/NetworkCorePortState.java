@@ -5,17 +5,43 @@ import java.util.Map;
 
 import net.minecraft.nbt.NbtCompound;
 import net.minecraft.nbt.NbtList;
+import net.minecraft.registry.RegistryKey;
+import net.minecraft.registry.RegistryKeys;
+import net.minecraft.util.Identifier;
 import net.minecraft.util.math.BlockPos;
+import net.minecraft.world.World;
 
 /**
  * Persistent state for network core port allocations. Ports are world-agnostic (apply to entire
- * Minecraft instance, not per-world). BlockPos coordinates are unique per world;
- * getBlockEntity(pos) is world-scoped, preventing collisions between identical positions in
- * Overworld/Nether/End.
+ * Minecraft instance, not per-world). Each allocation stores both BlockPos and dimension ID to
+ * disambiguate identical coordinates across dimensions (Overworld/Nether/End).
  */
 public class NetworkCorePortState {
-  final BlockPos[] byPort = new BlockPos[65536]; // index 0..65535
-  final Map<BlockPos, Integer> byPos = new HashMap<>();
+  // Allocation entry combining position and dimension
+  static class PortAllocation {
+    final BlockPos pos;
+    final RegistryKey<World> dimension;
+
+    PortAllocation(BlockPos pos, RegistryKey<World> dimension) {
+      this.pos = pos.toImmutable();
+      this.dimension = dimension;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+      if (this == obj) return true;
+      if (!(obj instanceof PortAllocation other)) return false;
+      return pos.equals(other.pos) && dimension.equals(other.dimension);
+    }
+
+    @Override
+    public int hashCode() {
+      return 31 * pos.hashCode() + dimension.hashCode();
+    }
+  }
+
+  final PortAllocation[] byPort = new PortAllocation[65536]; // index 0..65535
+  final Map<PortAllocation, Integer> byPos = new HashMap<>();
 
   public NetworkCorePortState() {}
 
@@ -33,8 +59,13 @@ public class NetworkCorePortState {
           BlockPos pos =
               new BlockPos(
                   c.getInt("X").orElse(0), c.getInt("Y").orElse(0), c.getInt("Z").orElse(0));
-          state.byPort[port] = pos;
-          state.byPos.put(pos, port);
+          // Migration: if no Dimension field, assume Overworld
+          String dimStr = c.getString("Dimension").orElse("minecraft:overworld");
+          RegistryKey<World> dimension =
+              RegistryKey.of(RegistryKeys.WORLD, Identifier.of(dimStr));
+          PortAllocation alloc = new PortAllocation(pos, dimension);
+          state.byPort[port] = alloc;
+          state.byPos.put(alloc, port);
         }
       }
     }
@@ -44,13 +75,14 @@ public class NetworkCorePortState {
   public NbtCompound writeNbt() {
     NbtList list = new NbtList();
     for (int i = 0; i < byPort.length; i++) {
-      BlockPos pos = byPort[i];
-      if (pos != null) {
+      PortAllocation alloc = byPort[i];
+      if (alloc != null) {
         NbtCompound c = new NbtCompound();
         c.putInt("Port", i);
-        c.putInt("X", pos.getX());
-        c.putInt("Y", pos.getY());
-        c.putInt("Z", pos.getZ());
+        c.putInt("X", alloc.pos.getX());
+        c.putInt("Y", alloc.pos.getY());
+        c.putInt("Z", alloc.pos.getZ());
+        c.putString("Dimension", alloc.dimension.getValue().toString());
         list.add(c);
       }
     }
@@ -59,15 +91,15 @@ public class NetworkCorePortState {
     return nbt;
   }
 
-  public synchronized int claim(BlockPos pos, int desiredPort) {
-    BlockPos key = pos.toImmutable();
+  public synchronized int claim(BlockPos pos, RegistryKey<World> dimension, int desiredPort) {
+    PortAllocation key = new PortAllocation(pos, dimension);
     Integer existing = byPos.get(key);
     if (existing != null) {
       return existing;
     }
     int candidate = clamp(desiredPort);
     if (candidate >= 0) {
-      BlockPos owner = byPort[candidate];
+      PortAllocation owner = byPort[candidate];
       if (owner == null || owner.equals(key)) {
         byPort[candidate] = key;
         byPos.put(key, candidate);
@@ -85,11 +117,11 @@ public class NetworkCorePortState {
     return assigned;
   }
 
-  public synchronized int reassign(BlockPos pos, int desiredPort) {
-    BlockPos key = pos.toImmutable();
+  public synchronized int reassign(BlockPos pos, RegistryKey<World> dimension, int desiredPort) {
+    PortAllocation key = new PortAllocation(pos, dimension);
     Integer currentObj = byPos.get(key);
     if (currentObj == null) {
-      return claim(pos, desiredPort);
+      return claim(pos, dimension, desiredPort);
     }
     int current = currentObj;
     int candidate = clamp(desiredPort);
@@ -100,7 +132,7 @@ public class NetworkCorePortState {
       byPos.put(key, -1);
       return -1;
     }
-    BlockPos owner = byPort[candidate];
+    PortAllocation owner = byPort[candidate];
     int newPort = candidate;
     if (owner != null && !owner.equals(key)) {
       int fallback = findAvailablePort();
@@ -109,7 +141,11 @@ public class NetworkCorePortState {
       }
       newPort = fallback;
       NetworkCore.LOGGER.info(
-          "Port {} already in use. Reassigning block at {} to port {}.", candidate, key, newPort);
+          "Port {} already in use. Reassigning block at {} in {} to port {}.",
+          candidate,
+          key.pos,
+          key.dimension.getValue(),
+          newPort);
     }
     if (newPort == current) {
       return current;
@@ -122,28 +158,22 @@ public class NetworkCorePortState {
     return newPort;
   }
 
-  public synchronized void release(BlockPos pos) {
-    BlockPos key = pos.toImmutable();
+  public synchronized void release(BlockPos pos, RegistryKey<World> dimension) {
+    PortAllocation key = new PortAllocation(pos, dimension);
     Integer current = byPos.remove(key);
     if (current != null && current >= 0) {
-      BlockPos owner = byPort[current];
+      PortAllocation owner = byPort[current];
       if (owner != null && owner.equals(key)) {
         byPort[current] = null;
       }
     }
   }
 
-  public synchronized BlockPos getPosByPort(int port) {
+  public synchronized PortAllocation getAllocationByPort(int port) {
     if (port < 0 || port > 65535) {
       return null;
     }
-    BlockPos pos = byPort[port];
-    if (pos != null) {
-      // Lazy cleanup: check if the block entity still exists and has this port
-      // But since we can't access world here, we'll assume it's correct or clean on lookup failure
-      return pos;
-    }
-    return null;
+    return byPort[port];
   }
 
   private int findAvailablePort() {

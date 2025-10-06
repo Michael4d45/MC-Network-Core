@@ -19,6 +19,9 @@ public class NetworkCoreEntity extends BlockEntity {
   /** Runtime state (not persisted). */
   private final CoreRuntime runtime = new CoreRuntime();
 
+  /** Flag to indicate port needs registration on first tick after load. */
+  private boolean needsPortRegistration = false;
+
   public NetworkCoreEntity(BlockPos pos, BlockState state) {
     super(ModBlockEntities.NETWORK_CORE, pos, state);
   }
@@ -28,7 +31,12 @@ public class NetworkCoreEntity extends BlockEntity {
   }
 
   public void setPort(int port) {
-    int assigned = DataRouter.requestPort(pos, port);
+    World world = getWorld();
+    if (!(world instanceof ServerWorld serverWorld)) {
+      NetworkCore.LOGGER.warn("Cannot set port on client side");
+      return;
+    }
+    int assigned = DataRouter.requestPort(pos, serverWorld, port);
     NetworkCore.LOGGER.debug("Assigned port {} to Network Core at {}", assigned, pos);
     if (this.port != assigned) {
       this.port = assigned;
@@ -44,6 +52,11 @@ public class NetworkCoreEntity extends BlockEntity {
   protected void readData(ReadView view) {
     int loaded = view.getOptionalInt(PORT_KEY).orElse(-1);
     this.port = Math.max(-1, Math.min(65535, loaded));
+    // Mark that we need to register this port with the allocator on first tick
+    // (when server/world are available)
+    if (this.port >= 0) {
+      this.needsPortRegistration = true;
+    }
   }
 
   @Override
@@ -56,6 +69,21 @@ public class NetworkCoreEntity extends BlockEntity {
   public static void tick(World world, BlockPos pos, BlockState state, NetworkCoreEntity be) {
     if (!(world instanceof ServerWorld serverWorld)) {
       return;
+    }
+
+    // Handle port registration after load, before any other processing
+    if (be.needsPortRegistration) {
+      be.needsPortRegistration = false;
+      int reconciledPort = DataRouter.registerExisting(pos, serverWorld, be.port);
+      if (reconciledPort != be.port) {
+        NetworkCore.LOGGER.info(
+            "Port conflict during load: requested {} but assigned {} at {}",
+            be.port,
+            reconciledPort,
+            pos);
+        be.port = reconciledPort;
+        be.markDirty();
+      }
     }
 
     // Skip ticking when:
@@ -84,5 +112,10 @@ public class NetworkCoreEntity extends BlockEntity {
 
   public boolean sendFrame(Frame frame) {
     return runtime.sendFrame(frame);
+  }
+
+  public void processRemoteDataControlFrame(
+      DataControlFrame frame, byte[] srcIp, int srcUdpPort, byte[] dstIp, int dstUdpPort) {
+    runtime.processRemoteDataControlFrame(frame, srcIp, srcUdpPort, dstIp, dstUdpPort, getPort());
   }
 }
