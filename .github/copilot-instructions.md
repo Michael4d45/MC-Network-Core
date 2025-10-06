@@ -23,9 +23,21 @@ Keep assets internally consistent; missing model/texture pairs will render as ma
 
 ## Version Management
 
-- Update versions in `build.gradle` top section when upgrading Minecraft/Fabric
+**Current Versions (as of gradle.properties):**
+
+- Minecraft: 1.21.7
+- Yarn Mappings: 1.21.7+build.8
+- Fabric Loader: 0.17.2
+- Loom: 1.11-SNAPSHOT
+- Fabric API: 0.129.0+1.21.7
+- Java: 21 (runtime and bytecode target)
+
+**Updating:**
+
 - Check https://fabricmc.net/develop for latest compatible versions
-- Java 21 runtime and bytecode target (Loom config sets toolchain + `options.release` to 21)
+- Update `gradle.properties` (NOT `build.gradle`)
+- Run `./gradlew --refresh-dependencies build`
+- Test `runClient` for mapping compatibility
 
 ## Quality Checks
 
@@ -37,8 +49,9 @@ Before committing or releasing:
    - Facing property correct relative to placement look direction
    - Transmit side reads neighbor redstone power (opposite facing)
    - Receive side emits power updates only when frame emission output changes
-4. Commands function (see Commands section) – especially `sendtest`, `listports`, `udpaddress`
-5. Protocol invariants: SOF=15, EOF=0, idle=0 upheld; Data(0), Control(1), Status(2), IPv4(3) frames parse
+   - Clock gating works: block processes symbols only when clock faces powered
+4. Commands function (see Commands section) – especially `sendtest`, `listports`, `udpaddress`, `stats`
+5. Protocol invariants: SOF=15, EOF=0, idle=0 upheld; Data(0), Control(1), Status(2), IPv4(3), IPv4Control(4) frames parse
 6. Counters increment appropriately for framing errors, frames parsed/emitted, drops (verify via logs or temporary debug output)
 7. No missing resources (logs free of "missing model" / magenta blocks)
 8. World save/load cycle:
@@ -50,6 +63,8 @@ Before committing or releasing:
 ## World Persistence & Loading Considerations
 
 **CRITICAL**: Always consider world save/load implications when modifying block entities, backend systems, or persistent data structures.
+
+**Port Allocation Architecture**: Ports are **world-agnostic** (apply to entire Minecraft instance, not per-world). BlockPos coordinates are unique per world; `getBlockEntity(pos)` is world-scoped, preventing collisions between identical positions in Overworld/Nether/End. The DataRouter iterates all loaded worlds when resolving ports.
 
 ### Block Entity Persistence
 
@@ -68,7 +83,6 @@ Before committing or releasing:
 ### Common Loading Issues
 
 - Do NOT overwrite loaded values before reconciliation.
-- Ensure existing cores call `handleLoad()` (invoked after construction) to register with routers.
 - Claim unique ports through router; never trust raw NBT without validation.
 - Keep operations synchronous & lightweight (server thread only).
 - Avoid unnecessary neighbor notifications during chunk population (defer until state actually changes at runtime).
@@ -84,21 +98,30 @@ Before committing or releasing:
 
 ## Protocol & Runtime Notes
 
-- Frame Types implemented: 0 (Data), 1 (Control), 2 (Status), 3 (IPv4).
-- Max payload length: 255 nibbles (LEN=0xFF)
+- Frame Types implemented: 0 (Data), 1 (Control), 2 (Status), 3 (IPv4), 4 (IPv4 Control).
+- Data Control codes: NOP, PORT_UNREACHABLE, MALFORMED_FRAME (accepted but not emitted), BLOCK_BUSY, ECHO_REQUEST, ECHO_REPLY, MODEQ, RESET, SETPORT
+- IPv4 Control codes: NETWORK_UNREACHABLE, HOST_UNREACHABLE, PORT_UNREACHABLE, ECHO_REQUEST, ECHO_REPLY, PARAMETER_PROBLEM, MODEQ, TARGET_BUSY
+- Max payload length: 255 nibbles (LEN=0xFF) for all frame types
+- Data frame LEN field: Counts **total args** (8 port nibbles + payload), consistent with all other frame types. Max payload = 247 nibbles.
+- Data frame CODE field: Must be 0x0 for standard frames; non-zero values reserved and will log warnings.
+- IPv4 frame structure: 24 nibbles addressing + 4 nibbles inner header + inner payload
 - Idle line: continuous 0 nibbles; EOF also 0 (context distinguishes end vs idle)
 - SOF strictly 15; parser remains in IDLE until SOF observed
-- Status frames (TYPE=2) emitted on MODEQ control frame; payload matches spec (signature + world + port + depths + flags).
+- Status frames (TYPE=2) emitted on MODEQ control frame; payload matches spec (signature + port + RX depth + error flags).
+- Error flags: bit0=RX_OVERFLOW, bit1=TX_FRAMING_ERR, bit2=PORT_ALLOC_FAILURE (reserved), bit3=IPV4_ROUTING_FAILURE (reserved)
+- Frame ordering: FIFO processing, no priority between frame types, IPv4-delivered frames queued via `DataRouter.server.execute()`
 
 ## Commands (Developer / Testing)
 
-Alias root: `/networkcore` (`/nc` shortcut)
+Root: `/networkcore` or `/nc` (shorthand alias)
 
 - `sendtest <0-15>`: Inject a symbol into nearest core's TX parser (bypasses timing)
-- `udpaddress`: Displays current UDP bind/target address used by `IPv4Router`
-- `listports`: Dump allocated ports per loaded world with block positions
-- `stats`: Show counters + queue depth + error flags for nearest core
+- `udpaddress`: Display current UDP bind address used by `IPv4Router`
+- `listports`: List all allocated ports with block positions and worlds
+- `stats`: Show counters, queue depth, and error flags for nearest core
 - `help`: Command summary
+
+All commands require operator permissions.
 
 ## Testing Aids
 

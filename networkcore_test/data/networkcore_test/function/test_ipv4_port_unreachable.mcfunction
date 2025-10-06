@@ -1,15 +1,11 @@
-# IPv4 frame (TYPE=3, CODE=0) to external host with encapsulated DataFrame (no payload)
-# Layout: SOF, TYPE, CODE, LEN=0x24, DST/ SRC addressing, inner TYPE=0 LEN=0x08, ports, EOF
-# SOF
+# IPv4 frame targeting an unbound local port (0xFFEE) to trigger IPv4 PORT_UNREACHABLE
+# Encapsulated payload is an empty Data frame.
 networkcore sendtest 15
-# TYPE
 networkcore sendtest 3
-# CODE
 networkcore sendtest 0
-# LEN (0x24 → 24 address + 4 header + 8 inner args)
 networkcore sendtest 2
 networkcore sendtest 4
-# DST_IP (192.168.1.10 → 12,0,10,8,0,1,0,10)
+# DST_IP 192.168.1.10
 networkcore sendtest 12
 networkcore sendtest 0
 networkcore sendtest 10
@@ -18,12 +14,12 @@ networkcore sendtest 0
 networkcore sendtest 1
 networkcore sendtest 0
 networkcore sendtest 10
-# DST_UDP_PORT (0x0034 → 52)
-networkcore sendtest 0
-networkcore sendtest 0
-networkcore sendtest 3
-networkcore sendtest 4
-# SRC_IP (127.0.0.1 → 7,15,0,0,0,0,0,1)
+# DST_UDP_PORT 0xFFEE
+networkcore sendtest 15
+networkcore sendtest 15
+networkcore sendtest 14
+networkcore sendtest 14
+# SRC_IP 127.0.0.1
 networkcore sendtest 7
 networkcore sendtest 15
 networkcore sendtest 0
@@ -32,24 +28,24 @@ networkcore sendtest 0
 networkcore sendtest 0
 networkcore sendtest 0
 networkcore sendtest 1
-# SRC_UDP_PORT (0x3039 → 12345)
+# SRC_UDP_PORT 0x3039
 networkcore sendtest 3
 networkcore sendtest 0
 networkcore sendtest 3
 networkcore sendtest 9
-# ENCAPSULATED FRAME HEADER (TYPE=0 DataFrame, CODE=0, LEN=0x08)
+# Inner header: TYPE=0 (DataFrame), CODE=0, LEN=0x08
 networkcore sendtest 0
 networkcore sendtest 0
 networkcore sendtest 0
 networkcore sendtest 8
-# ENCAPSULATED ARGS: DST_PORT=0x002A, SRC_PORT=0x0012
-networkcore sendtest 0
-networkcore sendtest 0
-networkcore sendtest 2
-networkcore sendtest 10
-networkcore sendtest 0
-networkcore sendtest 0
+# Inner args: DST_PORT=0xFFEE SRC_PORT=0x1000
+networkcore sendtest 15
+networkcore sendtest 15
+networkcore sendtest 14
+networkcore sendtest 14
 networkcore sendtest 1
-networkcore sendtest 2
+networkcore sendtest 0
+networkcore sendtest 0
+networkcore sendtest 0
 # EOF
 networkcore sendtest 0

@@ -1,28 +1,23 @@
-# Invalid data frame (missing EOF)
-# SOF=15 (Start of Frame), TYPE=0 (Data), DST_WORLD_HI=0, DST_WORLD_LO=0, DST_PORT_HI_HI=0, DST_PORT_HI_LO=0, DST_PORT_LO_HI=2, DST_PORT_LO_LO=10, SRC_WORLD_HI=0, SRC_WORLD_LO=0, SRC_PORT_HI_HI=0, SRC_PORT_HI_LO=0, SRC_PORT_LO_HI=1, SRC_PORT_LO_LO=2, LEN_HI=0, LEN_LO=0 (missing EOF)
-# DST_PORT = 42, SRC_PORT = 18, PAYLOAD = [] (invalid - missing EOF)
+# Invalid data frame (LEN=0x08 but missing EOF)
+# Layout: SOF, TYPE=0, CODE=0, LEN=0x08, ports, stray nibble instead of EOF
 # SOF
 networkcore sendtest 15
 # TYPE
 networkcore sendtest 0
-# DST_WORLD
+# CODE
 networkcore sendtest 0
+# LEN (0x08 → ports only)
 networkcore sendtest 0
-# DST_PORT
+networkcore sendtest 8
+# DST_PORT (0x002A)
 networkcore sendtest 0
 networkcore sendtest 0
 networkcore sendtest 2
 networkcore sendtest 10
-# SRC_WORLD
-networkcore sendtest 0
-networkcore sendtest 0
-# SRC_PORT
+# SRC_PORT (0x0012)
 networkcore sendtest 0
 networkcore sendtest 0
 networkcore sendtest 1
 networkcore sendtest 2
-# LEN
-networkcore sendtest 0
-networkcore sendtest 0
-# Invalid: missing EOF, extra byte instead
+# Invalid: missing EOF, stray nibble follows
 networkcore sendtest 1

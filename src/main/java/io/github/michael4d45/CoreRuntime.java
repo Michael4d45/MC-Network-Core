@@ -1,6 +1,7 @@
 package io.github.michael4d45;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Queue;
@@ -13,16 +14,18 @@ public class CoreRuntime {
 
   // Capacity for RX queue (frames pending emission). Status frames, routed frames, IPv4 frames
   // all share this. Drops increment overflow counter / bit.
+  // When full, local senders receive BLOCK_BUSY (Data Control 0x3).
+  // IPv4 senders receive TARGET_BUSY (IPv4 Control 0x7).
   private static final int RX_QUEUE_CAPACITY = 64;
 
   // Telemetry counters (server-thread only, no sync needed)
   long txFramesParsed = 0; // successfully parsed ingress frames (data/control/ipv4)
-  long txFramesDropped = 0; // would be used if we had a bounded TX ring (currently unused)
   long txFramingErrors = 0; // framing errors encountered by parser
   long rxFramesEmitted = 0; // frames fully emitted on egress
   long rxOverflowDrops = 0; // frames dropped because RX queue full
 
-  // Cached last computed error flags bitfield (bit0 RX_OVERFLOW, bit1 TX_FRAMING_ERR)
+  // Cached last computed error flags bitfield:
+  // bit0=RX_OVERFLOW, bit1=TX_FRAMING_ERR, bit2=PORT_ALLOC_FAILURE, bit3=IPV4_ROUTING_FAILURE
   private int errorFlagsBitfield = 0;
 
   public void processTxSymbol(NetworkCoreEntity be, int transmitPower) {
@@ -51,9 +54,13 @@ public class CoreRuntime {
       // framing error count removed for now; could add metrics collection later
       switch (result.committedFrame) {
         case IPv4Frame ipv4Frame -> IPv4Router.sendFrame(ipv4Frame);
-        case RoutedFrame dataFrame -> DataRouter.sendFrame(dataFrame);
-        case ControlFrame controlFrame -> processControlFrame(controlFrame, be);
-        default -> {}
+        case IPv4ControlFrame ipv4ControlFrame -> IPv4Router.sendFrame(ipv4ControlFrame);
+        case DataFrame dataFrame -> DataRouter.sendLocalDataFrame(be, dataFrame);
+        case DataControlFrame controlFrame -> processDataControlFrame(controlFrame, be);
+        default ->
+            NetworkCore.LOGGER.debug(
+                "Unhandled frame type emitted from TX parser: {}",
+                result.committedFrame.getClass().getSimpleName());
       }
       txFramesParsed++;
     }
@@ -62,94 +69,96 @@ public class CoreRuntime {
     }
   }
 
-  private void processControlFrame(ControlFrame controlFrame, NetworkCoreEntity be) {
-    NetworkCore.LOGGER.info("Processing control frame: {}", controlFrame);
-    switch (controlFrame.opcode) {
-      case 0x0 -> // NOP
-      // Idle/resync assist - no action needed
-      {
-        if (controlFrame.getArgs().length != 0) {
-          NetworkCore.LOGGER.warn(
-              "Invalid NOP control frame: expected 0 args, got {}", controlFrame.getArgs().length);
-        } else {
-          NetworkCore.LOGGER.debug("NOP control frame");
+  private void processDataControlFrame(DataControlFrame controlFrame, NetworkCoreEntity be) {
+    NetworkCore.LOGGER.info("Processing data control frame: {}", controlFrame);
+    int code = controlFrame.getCode();
+    int[] args = controlFrame.getArgs();
+    switch (code) {
+      case 0x0 -> {
+        if (args.length != 0) {
+          NetworkCore.LOGGER.warn("NOP control frame should have no args (got {})", args.length);
         }
+        break;
       }
-
       case 0x1 -> {
-        // RESET
-        // Flush TX/RX, clear errors
-        if (controlFrame.getArgs().length != 0) {
-          NetworkCore.LOGGER.warn(
-              "Invalid RESET control frame: expected 0 args, got {}",
-              controlFrame.getArgs().length);
+        if (args.length == 4) {
+          int port = (args[0] << 12) | (args[1] << 8) | (args[2] << 4) | args[3];
+          NetworkCore.LOGGER.warn("Port {} unreachable", port);
         } else {
-          ingress.state = TxFramerStateMachine.State.IDLE;
-          ingress.buffer.clear();
-          ingress.expectedLength = 0;
-          egress.state = RxEmitterStateMachine.State.IDLE;
-          egress.currentFrame = null;
-          egress.symbols = null;
-          egress.position = 0;
-          egress.lastOutputPower = 0;
-          rxQueue.clear();
-          NetworkCore.LOGGER.info("RESET control frame processed");
+          NetworkCore.LOGGER.warn("PORT_UNREACHABLE frame requires 4 arg nibbles");
         }
+        break;
       }
-
-      case 0x2 -> // MODEQ - Request status frame
-      // Generate and queue status frame for RX
-      {
-        if (controlFrame.getArgs().length != 0) {
-          NetworkCore.LOGGER.warn(
-              "Invalid MODEQ control frame: expected 0 args, got {}",
-              controlFrame.getArgs().length);
-        } else {
-          int port = be.getPort();
-          int worldId = be.getWorldId();
-          queueStatusFrame(worldId, port);
-        }
+      case 0x2 -> {
+        NetworkCore.LOGGER.warn(
+            "MALFORMED_FRAME notification received (args={}). Dropped.", Arrays.toString(args));
+        break;
       }
-
       case 0x3 -> {
-        // SETPORT - Set port
-        int[] args = controlFrame.getArgs();
-        if (args.length >= 1 && args.length <= 4) {
-          int port = 0;
-          // Build port from nibbles (high nibbles first)
-          for (int i = 0; i < args.length; i++) {
-            port = (port << 4) | args[i];
-          }
-          if (port >= 0 && port <= 65535) {
-            be.setPort(port);
-          } else {
-            NetworkCore.LOGGER.warn("SETPORT control frame: port {} out of range 0-65535", port);
-          }
+        if (args.length == 4) {
+          int port = (args[0] << 12) | (args[1] << 8) | (args[2] << 4) | args[3];
+          NetworkCore.LOGGER.info("Target port {} busy", port);
         } else {
-          NetworkCore.LOGGER.warn(
-              "Invalid SETPORT control frame, arg count {} not in range 1-4", args.length);
+          NetworkCore.LOGGER.warn("BLOCK_BUSY frame requires 4 arg nibbles");
         }
+        break;
       }
-
-      case 0x4 -> // STATSCLR - Clear counters
-      {
-        if (controlFrame.getArgs().length != 0) {
-          NetworkCore.LOGGER.warn(
-              "Invalid STATSCLR control frame: expected 0 args, got {}",
-              controlFrame.getArgs().length);
-        } else {
-          txFramesParsed = 0;
-          txFramesDropped = 0;
-          txFramingErrors = 0;
-          rxFramesEmitted = 0;
-          rxOverflowDrops = 0;
-          recomputeErrorFlags();
-          NetworkCore.LOGGER.info("STATSCLR control frame processed");
+      case 0x4 -> {
+        DataControlFrame reply = new DataControlFrame(0x5, args);
+        sendFrame(reply);
+        break;
+      }
+      case 0x5 -> {
+        NetworkCore.LOGGER.info("Received ECHO_REPLY payload={} ", Arrays.toString(args));
+        break;
+      }
+      case 0x6 -> {
+        if (args.length != 0) {
+          NetworkCore.LOGGER.warn("MODEQ control frame should have no args");
         }
+        int port = be.getPort();
+        queueStatusFrame(port);
+        break;
       }
-
-      default -> NetworkCore.LOGGER.warn("Unknown control frame opcode {}", controlFrame.opcode);
+      case 0x7 -> {
+        if (args.length != 0) {
+          NetworkCore.LOGGER.warn("RESET control frame should have no args");
+        }
+        performReset();
+        break;
+      }
+      case 0x8 -> {
+        if (args.length != 4) {
+          NetworkCore.LOGGER.warn(
+              "SETPORT control frame requires 4 arg nibbles (got {})", args.length);
+          break;
+        }
+        int requestedPort = (args[0] << 12) | (args[1] << 8) | (args[2] << 4) | (args[3] & 0xF);
+        if (requestedPort < 0 || requestedPort > 65535) {
+          NetworkCore.LOGGER.warn("SETPORT request out of range: {}", requestedPort);
+          break;
+        }
+        NetworkCore.LOGGER.info("SETPORT request to {}", requestedPort);
+        be.setPort(requestedPort);
+        queueStatusFrame(be.getPort());
+        break;
+      }
+      default -> NetworkCore.LOGGER.warn("Unknown data control code {}", code);
     }
+  }
+
+  private void performReset() {
+    ingress.state = TxFramerStateMachine.State.IDLE;
+    ingress.buffer.clear();
+    ingress.expectedLength = 0;
+    egress.state = RxEmitterStateMachine.State.IDLE;
+    egress.currentFrame = null;
+    egress.symbols = null;
+    egress.position = 0;
+    egress.lastOutputPower = 0;
+    rxQueue.clear();
+    recomputeErrorFlags();
+    NetworkCore.LOGGER.info("Core runtime reset");
   }
 
   public void processRxOutput() {
@@ -197,26 +206,41 @@ public class CoreRuntime {
     return egress.lastOutputPower;
   }
 
-  public void sendFrame(Frame frame) {
+  public boolean sendFrame(Frame frame) {
     if (frame == null) {
-      return;
+      return true; // null frames are ignored, not "failed"
     }
-    if (rxQueue.size() >= RX_QUEUE_CAPACITY) {
+    // Validate frame can be built before queuing - all frames limited to 255 total args
+    try {
+      int[] args = frame.getPayloadArgs();
+      if (args.length > 255) {
+        NetworkCore.LOGGER.error(
+            "Cannot queue frame with args length {} (max 255): {}", args.length, frame);
+        rxOverflowDrops++;
+        recomputeErrorFlags();
+        return false;
+      }
+    } catch (IllegalStateException e) {
+      NetworkCore.LOGGER.error("Cannot queue invalid frame: {}", frame, e);
+      rxOverflowDrops++;
+      recomputeErrorFlags();
+      return false;
+    }
+    if (rxQueue.size() > RX_QUEUE_CAPACITY) {
       rxOverflowDrops++;
       recomputeErrorFlags();
       NetworkCore.LOGGER.warn("RX queue full ({}), dropping frame {}", RX_QUEUE_CAPACITY, frame);
-      return;
+      return false;
     }
     rxQueue.add(frame);
     NetworkCore.LOGGER.debug("Queued frame for egress, queue size now {}", rxQueue.size());
+    return true;
   }
 
-  private void queueStatusFrame(int worldId, int port) {
+  private void queueStatusFrame(int port) {
     int rxDepth = Math.min(rxQueue.size(), 13);
-    int txDepth = 0; // No TX queue yet
     recomputeErrorFlags();
-    StatusFrame statusFrame =
-        new StatusFrame(worldId, port, rxDepth, txDepth, errorFlagsBitfield & 0xF);
+    StatusFrame statusFrame = new StatusFrame(port, rxDepth, errorFlagsBitfield & 0xF);
     if (rxQueue.size() >= RX_QUEUE_CAPACITY) {
       rxOverflowDrops++;
       recomputeErrorFlags();
@@ -224,7 +248,7 @@ public class CoreRuntime {
       return;
     }
     rxQueue.add(statusFrame);
-    NetworkCore.LOGGER.info("Queued status frame for RX (port={}, world={})", port, worldId);
+    NetworkCore.LOGGER.info("Queued status frame for RX (port={})", port);
   }
 
   private void recomputeErrorFlags() {
@@ -235,16 +259,14 @@ public class CoreRuntime {
     if (txFramingErrors > 0) {
       flags |= 0x2; // bit1 TX_FRAMING_ERR
     }
+    // bit2 PORT_ALLOC_FAILURE - reserved for future use
+    // bit3 IPV4_ROUTING_FAILURE - reserved for future use
     this.errorFlagsBitfield = flags;
   }
 
   // Accessors for stats command
   public long getTxFramesParsed() {
     return txFramesParsed;
-  }
-
-  public long getTxFramesDropped() {
-    return txFramesDropped;
   }
 
   public long getTxFramingErrors() {

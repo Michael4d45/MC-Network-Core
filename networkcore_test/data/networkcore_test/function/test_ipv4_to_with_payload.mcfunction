@@ -1,11 +1,15 @@
-# IPv4 frame to external host with payload [10,11]
-# SOF=15 (Start of Frame), TYPE=3 (IPv4), DST_IP=12,0,10,8,0,1,0,10 (192.168.1.10), DST_UDP_PORT=0,0,3,4 (52), DST_WORLD=0,0 (0), DST_PORT=0,0,2,10 (42), SRC_IP=7,15,0,0,0,0,0,1 (127.0.0.1), SRC_UDP_PORT=3,0,3,9 (12345), SRC_WORLD=0,0 (0), SRC_PORT=0,0,1,2 (18), LEN=0,2 (2), 10, 11 (Payload), EOF=0 (End of Frame)
-# DST_IP = 192.168.1.10, DST_UDP_PORT = 52, SRC_PORT = 18, PAYLOAD = [10, 11]
+# IPv4 frame to external host with encapsulated DataFrame payload [10,11]
+# Layout: SOF, TYPE=3, CODE=0, LEN=0x26, addressing, inner frame header LEN=0x0A, ports + payload, EOF
 # SOF
 networkcore sendtest 15
 # TYPE
 networkcore sendtest 3
-# DST_IP
+# CODE
+networkcore sendtest 0
+# LEN (0x26 → 24 address + 4 header + 10 inner args)
+networkcore sendtest 2
+networkcore sendtest 6
+# DST_IP (192.168.1.10)
 networkcore sendtest 12
 networkcore sendtest 0
 networkcore sendtest 10
@@ -14,20 +18,12 @@ networkcore sendtest 0
 networkcore sendtest 1
 networkcore sendtest 0
 networkcore sendtest 10
-# DST_UDP_PORT
+# DST_UDP_PORT (0x0034)
 networkcore sendtest 0
 networkcore sendtest 0
 networkcore sendtest 3
 networkcore sendtest 4
-# DST_WORLD
-networkcore sendtest 0
-networkcore sendtest 0
-# DST_PORT
-networkcore sendtest 0
-networkcore sendtest 0
-networkcore sendtest 2
-networkcore sendtest 10
-# SRC_IP
+# SRC_IP (127.0.0.1)
 networkcore sendtest 7
 networkcore sendtest 15
 networkcore sendtest 0
@@ -36,23 +32,25 @@ networkcore sendtest 0
 networkcore sendtest 0
 networkcore sendtest 0
 networkcore sendtest 1
-# SRC_UDP_PORT
+# SRC_UDP_PORT (0x3039)
 networkcore sendtest 3
 networkcore sendtest 0
 networkcore sendtest 3
 networkcore sendtest 9
-# SRC_WORLD
+# ENCAPSULATED FRAME HEADER (TYPE=0, CODE=0, LEN=0x0A)
 networkcore sendtest 0
 networkcore sendtest 0
-# SRC_PORT
+networkcore sendtest 0
+networkcore sendtest 10
+# ENCAPSULATED ARGS: DST/SRC PORTS + PAYLOAD
+networkcore sendtest 0
+networkcore sendtest 0
+networkcore sendtest 2
+networkcore sendtest 10
 networkcore sendtest 0
 networkcore sendtest 0
 networkcore sendtest 1
 networkcore sendtest 2
-# LEN
-networkcore sendtest 0
-networkcore sendtest 2
-# PAYLOAD
 networkcore sendtest 10
 networkcore sendtest 11
 # EOF

@@ -1,28 +1,23 @@
-# Frame with payload [10,11]
-# SOF=15, TYPE=0, DST_WORLD_HI=0, DST_WORLD_LO=0, DST_PORT_HI_HI=0, DST_PORT_HI_LO=0, DST_PORT_LO_HI=2, DST_PORT_LO_LO=10, SRC_WORLD_HI=0, SRC_WORLD_LO=0, SRC_PORT_HI_HI=0, SRC_PORT_HI_LO=0, SRC_PORT_LO_HI=1, SRC_PORT_LO_LO=2, LEN_HI=0, LEN_LO=2, 10, 11, EOF=0
-
+# Data frame with payload [10,11]
+# Layout: SOF, TYPE=0, CODE=0, LEN(0x0A), DST_PORT=0x002A, SRC_PORT=0x0012, PAYLOAD=0x0A 0x0B, EOF
 # SOF
 networkcore sendtest 15
 # TYPE
 networkcore sendtest 0
-# DST_WORLD
+# CODE
 networkcore sendtest 0
+# LEN (0x0A → ports + 2 payload nibbles)
 networkcore sendtest 0
-# DST_PORT
+networkcore sendtest 10
+# DST_PORT (0x002A)
 networkcore sendtest 0
 networkcore sendtest 0
 networkcore sendtest 2
 networkcore sendtest 10
-# SRC_WORLD
-networkcore sendtest 0
-networkcore sendtest 0
-# SRC_PORT
+# SRC_PORT (0x0012)
 networkcore sendtest 0
 networkcore sendtest 0
 networkcore sendtest 1
-networkcore sendtest 2
-# LEN
-networkcore sendtest 0
 networkcore sendtest 2
 # PAYLOAD
 networkcore sendtest 10

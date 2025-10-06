@@ -16,15 +16,21 @@ This will copy the datapack to `run/saves/New World/datapacks/networkcore_test`.
 
 - networkcore_test:load (auto via minecraft:load)
 - networkcore_test:test_simple (chat sanity message)
-- networkcore_test:test_frame_simple (LEN=6 frame, dst=0x34 src=0x12, no payload)
-- networkcore_test:test_frame_with_payload (LEN=8 frame, payload 0xA 0xB)
-- networkcore_test:test_control_setport (Control SETPORT -> port 0x2A)
+- networkcore_test:test_frame_simple (TYPE=0, LEN=0x08, dst=0x002A src=0x0012)
+- networkcore_test:test_frame_with_payload (TYPE=0, LEN=0x0A, payload 0x0A 0x0B)
+- networkcore_test:test_frame_max_payload (TYPE=0, LEN=0xF7, 247-nibble payload helper)
+- networkcore_test:test_control_setport (Control SETPORT -> port 0x0042)
 - networkcore_test:test_invalid_frame (Malformed EOF to exercise error path)
 - networkcore_test:test_reset (Control RESET placeholder)
-- networkcore_test:test_ipv4_to_simple (IPv4 To frame, src port 18, dst IP 192.168.1.10, dst port 52, no payload)
-- networkcore_test:test_ipv4_from_simple (IPv4 From frame, dst port 52, src IP 192.168.1.10, src port 18, no payload)
-- networkcore_test:test_ipv4_to_with_payload (IPv4 To frame with payload [10,11])
-- networkcore_test:test_ipv4_from_with_payload (IPv4 From frame with payload [10,11])
+- networkcore_test:test_ipv4_to_simple (IPv4 TYPE=3 LEN=0x24, encapsulated DataFrame w/out payload)
+- networkcore_test:test_ipv4_from_simple (IPv4 TYPE=3 LEN=0x24, inbound DataFrame w/out payload)
+- networkcore_test:test_ipv4_to_with_payload (IPv4 TYPE=3 LEN=0x26, DataFrame payload [0x0A,0x0B])
+- networkcore_test:test_ipv4_from_with_payload (IPv4 TYPE=3 LEN=0x26, inbound DataFrame payload [0x0A,0x0B])
+- networkcore_test:test_ipv4_max_payload (IPv4 raw payload LEN=0xE3 helper cycles)
+- networkcore_test:test_ipv4_max_payload_src_192_168_1_25 (IPv4 encapsulated DataFrame LEN=0xE3)
+- networkcore_test:test_status_basic (Standalone StatusFrame LEN=0x08)
+- networkcore_test:test_ipv4_control_echo_request (IPv4 Control ECHO_REQUEST)
+- networkcore_test:test_ipv4_control_network_unreachable (IPv4 Control NETWORK_UNREACHABLE)
 
 ## Removed
 

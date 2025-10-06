@@ -32,7 +32,11 @@ public class NetworkCoreBlock extends BlockWithEntity {
   public static final IntProperty TRANSMIT_POWERED = IntProperty.of("transmit_powered", 0, 15);
   public static final BooleanProperty RECEIVE_ACTIVE = BooleanProperty.of("receive_active");
   public static final BooleanProperty TRANSMIT_ACTIVE = BooleanProperty.of("transmit_active");
+  // Visual feedback: RECEIVE_ACTIVE and TRANSMIT_ACTIVE properties are used for rendering.
+  // Block models and textures are defined in src/main/resources/assets/network-core/
   public static final BooleanProperty CLOCK_ACTIVE = BooleanProperty.of("clock_active");
+
+  @SuppressWarnings("hiding")
   public static final MapCodec<NetworkCoreBlock> CODEC = createCodec(NetworkCoreBlock::new);
 
   public NetworkCoreBlock(Settings settings) {
@@ -113,7 +117,7 @@ public class NetworkCoreBlock extends BlockWithEntity {
   @Override
   public void onStateReplaced(BlockState state, ServerWorld world, BlockPos pos, boolean moved) {
     if (!world.isClient) {
-      DataRouter.release(world, pos);
+      DataRouter.release(pos);
     }
     super.onStateReplaced(state, world, pos, moved);
   }
@@ -164,6 +168,9 @@ public class NetworkCoreBlock extends BlockWithEntity {
   }
 
   public static void updateTransmitPowering(World world, BlockPos pos, BlockState state) {
+    // Direction semantics: FACING points inward (internal orientation).
+    // Transmit samples from the opposite face (where redstone signal enters).
+    // Receive emits from the opposite face (where signal exits).
     Direction facing = state.get(FACING);
     Direction powerReadDirection = facing.getOpposite();
     int powering =

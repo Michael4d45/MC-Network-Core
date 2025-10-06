@@ -7,8 +7,11 @@ public class TxFramerStateMachine {
   public enum State {
     IDLE,
     TYPE,
-    HEADER,
-    DATA,
+    CODE,
+    LEN_HI,
+    LEN_LO,
+    ARGS,
+    EXPECT_EOF,
     ERROR
   }
 
@@ -49,116 +52,90 @@ public class TxFramerStateMachine {
         }
       }
       case TYPE -> {
-        newBuffer.add(symbol);
-        return new Result(State.HEADER, newBuffer, null, false, 0);
+        newBuffer.add(symbol & 0xF);
+        return new Result(State.CODE, newBuffer, null, false, 0);
       }
-      case HEADER -> {
-        newBuffer.add(symbol);
-        int type = newBuffer.get(1);
-        switch (type) {
-          case 0 -> {
-            // data
-            if (newBuffer.size() == 16) {
-              int lenHi = newBuffer.get(14);
-              int lenLo = newBuffer.get(15);
-              int expLen = (lenHi << 4) | lenLo;
-              if (expLen >= 0) {
-                return new Result(State.DATA, newBuffer, null, false, expLen);
-              } else {
-                NetworkCore.LOGGER.warn("Invalid length in data frame: " + expLen);
-                return new Result(State.ERROR, newBuffer, null, true, 0);
-              }
-            }
-          }
-          case 1 -> {
-            // control
-            if (newBuffer.size() == 5) {
-              int lenHi = newBuffer.get(3);
-              int lenLo = newBuffer.get(4);
-              int expLen = (lenHi << 4) | lenLo;
-              if (expLen >= 0) {
-                return new Result(State.DATA, newBuffer, null, false, expLen);
-              } else {
-                NetworkCore.LOGGER.warn("Invalid length in control frame: " + expLen);
-                return new Result(State.ERROR, newBuffer, null, true, 0);
-              }
-            }
-          }
-          case 3 -> {
-            // IPv4 Frame
-            if (newBuffer.size() == 40) {
-              int lenHi = newBuffer.get(38);
-              int lenLo = newBuffer.get(39);
-              int expLen = (lenHi << 4) | lenLo;
-              if (expLen >= 0) {
-                return new Result(State.DATA, newBuffer, null, false, expLen);
-              } else {
-                NetworkCore.LOGGER.warn("Invalid length in IPv4 frame: " + expLen);
-                return new Result(State.ERROR, newBuffer, null, true, 0);
-              }
-            }
-          }
-          default -> {
-            NetworkCore.LOGGER.warn("Unknown frame type: " + type);
-            return new Result(State.ERROR, newBuffer, null, true, 0);
-          }
+      case CODE -> {
+        newBuffer.add(symbol & 0xF);
+        return new Result(State.LEN_HI, newBuffer, null, false, 0);
+      }
+      case LEN_HI -> {
+        newBuffer.add(symbol & 0xF);
+        return new Result(State.LEN_LO, newBuffer, null, false, 0);
+      }
+      case LEN_LO -> {
+        newBuffer.add(symbol & 0xF);
+        int lenHi = newBuffer.get(3);
+        int lenLo = newBuffer.get(4);
+        int expLen = (lenHi << 4) | lenLo;
+        if (expLen < 0 || expLen > 0xFF) {
+          NetworkCore.LOGGER.warn("Invalid payload length: {}", expLen);
+          return new Result(State.ERROR, newBuffer, null, true, 0);
+        }
+        // LEN now means total args for ALL frame types (no special Data frame handling)
+        if (expLen == 0) {
+          return new Result(State.EXPECT_EOF, newBuffer, null, false, 0);
+        }
+        return new Result(State.ARGS, newBuffer, null, false, expLen);
+      }
+      case ARGS -> {
+        newBuffer.add(symbol & 0xF);
+        int argsRead = newBuffer.size() - 5;
+        if (argsRead == expectedLength) {
+          return new Result(State.EXPECT_EOF, newBuffer, null, false, expectedLength);
+        } else if (argsRead > expectedLength) {
+          NetworkCore.LOGGER.warn("Received more argument nibbles than expected");
+          return new Result(State.ERROR, newBuffer, null, true, 0);
         }
       }
-      case DATA -> {
-        newBuffer.add(symbol);
-        int type2 = newBuffer.get(1);
-        int totalExpected;
-        switch (type2) {
-          case 0 -> totalExpected = 16 + expectedLength + 1;
-          case 1 -> totalExpected = 5 + expectedLength + 1; // control header length
-          case 3 -> totalExpected = 40 + expectedLength + 1; // IPv4 header length (TYPE + 38 data)
-          default -> {
-            NetworkCore.LOGGER.warn("Unexpected frame type in DATA state: " + type2);
-            return new Result(State.ERROR, newBuffer, null, true, 0);
-          }
+      case EXPECT_EOF -> {
+        if (symbol != 0) {
+          NetworkCore.LOGGER.warn("Expected EOF nibble but received {}", symbol);
+          return new Result(State.ERROR, newBuffer, null, true, 0);
         }
-        if (newBuffer.size() == totalExpected && symbol == 0) {
-          switch (type2) {
-            case 0 -> {
-              try {
-                committed = DataFrame.fromSymbols(newBuffer.stream().mapToInt(i -> i).toArray());
-                return new Result(State.IDLE, newBuffer, committed, false, 0);
-              } catch (IllegalArgumentException e) {
-                NetworkCore.LOGGER.warn("Failed to parse data frame: " + e.getMessage());
-                return new Result(State.ERROR, newBuffer, null, true, 0);
-              }
-            }
-            case 1 -> {
-              try {
-                committed = ControlFrame.fromSymbols(newBuffer.stream().mapToInt(i -> i).toArray());
-                return new Result(State.IDLE, newBuffer, committed, false, 0);
-              } catch (IllegalArgumentException e) {
-                NetworkCore.LOGGER.warn("Failed to parse control frame: " + e.getMessage());
-                return new Result(State.ERROR, newBuffer, null, true, 0);
-              }
-            }
-            case 3 -> {
-              try {
-                committed = IPv4Frame.fromSymbols(newBuffer.stream().mapToInt(i -> i).toArray());
-                return new Result(State.IDLE, newBuffer, committed, false, 0);
-              } catch (IllegalArgumentException e) {
-                NetworkCore.LOGGER.warn("Failed to parse IPv4 frame: " + e.getMessage());
-                return new Result(State.ERROR, newBuffer, null, true, 0);
-              }
-            }
-            default -> {}
-          }
-        } else if (newBuffer.size() > totalExpected) {
-          NetworkCore.LOGGER.warn("Buffer size exceeded expected length");
+        newBuffer.add(0);
+        try {
+          committed = decodeFrame(newBuffer);
+          return new Result(State.IDLE, new java.util.ArrayList<>(), committed, false, 0);
+        } catch (IllegalArgumentException e) {
+          NetworkCore.LOGGER.warn("Failed to parse frame: {}", e.getMessage());
           return new Result(State.ERROR, newBuffer, null, true, 0);
         }
       }
       case ERROR -> {
         if (symbol == 0) {
-          return new Result(State.IDLE, newBuffer, null, false, 0);
+          return new Result(State.IDLE, new java.util.ArrayList<>(), null, false, 0);
         }
       }
     }
     return new Result(currentState, newBuffer, committed, errorInc, expectedLength);
+  }
+
+  private static Frame decodeFrame(List<Integer> buffer) {
+    int[] symbols = buffer.stream().mapToInt(i -> i & 0xF).toArray();
+    if (symbols.length < 6) {
+      throw new IllegalArgumentException("Frame too short");
+    }
+    int type = symbols[1];
+    int code = symbols[2];
+    int len = (symbols[3] << 4) | symbols[4];
+    if (len != symbols.length - 6) {
+      throw new IllegalArgumentException(
+          "Length mismatch: expected " + len + ", got " + (symbols.length - 6));
+    }
+    int[] args = new int[len];
+    System.arraycopy(symbols, 5, args, 0, len);
+    return switch (type) {
+      case 0 -> DataFrame.from(code, args);
+      case 1 -> DataControlFrame.from(code, args);
+      case 2 -> StatusFrame.from(code, args);
+      case 3 -> IPv4Frame.from(code, args);
+      case 4 ->
+          // In-game parsing: UDP ports are unknown at parse time and set to -1.
+          // IPv4Router will extract actual ports from DatagramPacket metadata or resolve
+          // them from routing context when sending over the network.
+          IPv4ControlFrame.from(code, args, -1, -1);
+      default -> throw new IllegalArgumentException("Unknown frame type: " + type);
+    };
   }
 }

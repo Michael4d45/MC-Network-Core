@@ -162,10 +162,9 @@ public class NetworkCore implements ModInitializer {
                           CoreRuntime rt = nearest.getRuntime();
                           String msg =
                               String.format(
-                                  "Stats @ %s:\n txFramesParsed=%d txFramesDropped=%d txFramingErrors=%d\n rxFramesEmitted=%d rxOverflowDrops=%d rxQueueDepth=%d errorFlags=0x%X",
+                                  "Stats @ %s:\n txFramesParsed=%d txFramingErrors=%d\n rxFramesEmitted=%d rxOverflowDrops=%d rxQueueDepth=%d errorFlags=0x%X",
                                   nearest.getPos(),
                                   rt.getTxFramesParsed(),
-                                  rt.getTxFramesDropped(),
                                   rt.getTxFramingErrors(),
                                   rt.getRxFramesEmitted(),
                                   rt.getRxOverflowDrops(),

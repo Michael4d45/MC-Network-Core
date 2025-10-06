@@ -1,51 +1,69 @@
 package io.github.michael4d45;
 
-/** Stub for StatusFrame. */
+/** Status frame emitted in response to MODEQ requests. */
 public class StatusFrame extends Frame {
-  private final int world;
+
+  private final int code;
   private final int port;
   private final int rxDepth;
-  private final int txDepth;
   private final int errorFlags;
 
-  public StatusFrame(int world, int port, int rxDepth, int txDepth, int errorFlags) {
-    this.world = world;
-    this.port = port;
+  public StatusFrame(int port, int rxDepth, int errorFlags) {
+    this(0, port, rxDepth, errorFlags);
+  }
+
+  public StatusFrame(int code, int port, int rxDepth, int errorFlags) {
+    this.code = code & 0xF;
+    this.port = port & 0xFFFF;
     this.rxDepth = rxDepth;
-    this.txDepth = txDepth;
-    this.errorFlags = errorFlags;
+    this.errorFlags = errorFlags & 0xF;
   }
 
   public int[] getPayload() {
     return new int[] {
       0xA, // signature
-      (world >> 4) & 0xF, // World high
-      world & 0xF, // World low
-      (port >> 4) & 0xF, // Port high
-      port & 0xF, // Port low
-      Math.min(rxDepth, 13), // RX queue depth clipped
-      Math.min(txDepth, 13), // TX queue depth clipped
-      errorFlags & 0xF // Error flags bitmap
+      (port >> 12) & 0xF, // Port high high
+      (port >> 8) & 0xF, // Port high low
+      (port >> 4) & 0xF, // Port low high
+      port & 0xF, // Port low low
+      Math.min(rxDepth, 64), // RX queue depth clipped to capacity
+      errorFlags & 0xF // Error flags bitmap (bit0=RX_OVERFLOW, bit1=TX_FRAMING_ERR,
+      // bit2=PORT_ALLOC_FAILURE, bit3=IPV4_ROUTING_FAILURE)
     };
+  }
+
+  @Override
+  public int getType() {
+    return 2;
+  }
+
+  @Override
+  public int getCode() {
+    return code;
+  }
+
+  @Override
+  protected int[] getPayloadArgs() {
+    return getPayload();
   }
 
   @Override
   public String toString() {
     return String.format(
-        "StatusFrame{world=%d, port=%d, rxDepth=%d, txDepth=%d, errorFlags=%d}",
-        world, port, rxDepth, txDepth, errorFlags);
+        "StatusFrame{code=%d, port=%d, rxDepth=%d, errorFlags=%d}",
+        code, port, rxDepth, errorFlags);
   }
 
-  @Override
-  public int[] buildSymbols() {
-    int[] payload = getPayload();
-    int[] symbols = new int[13];
-    symbols[0] = 15; // SOF
-    symbols[1] = 2; // TYPE
-    symbols[2] = 0; // LEN_HI
-    symbols[3] = 8; // LEN_LO
-    System.arraycopy(payload, 0, symbols, 4, 8);
-    symbols[12] = 0; // EOF
-    return symbols;
+  public static StatusFrame from(int code, int[] args) {
+    if (args.length != 7) {
+      throw new IllegalArgumentException("Status frame payload must be 7 nibbles");
+    }
+    if ((args[0] & 0xF) != 0xA) {
+      throw new IllegalArgumentException("Status frame missing signature nibble");
+    }
+    int port = (args[1] << 12) | (args[2] << 8) | (args[3] << 4) | args[4];
+    int rxDepth = args[5] & 0xF;
+    int errorFlags = args[6] & 0xF;
+    return new StatusFrame(code, port, rxDepth, errorFlags);
   }
 }

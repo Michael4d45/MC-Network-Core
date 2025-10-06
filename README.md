@@ -4,21 +4,29 @@ Deterministic, NIC-inspired redstone ↔ packet interface for Fabric Minecraft 1
 
 ## Overview
 
-Each `Network Core` block acts like a minimal network interface. It samples a redstone power level every game tick if clock is powered on the `T` face (Transmitting) interpreting it as a nibble (0–15). Frames are emitted as redstone power on the `R` face (Receiving). The block persists its assigned port across world saves. A optional clock gating input enables externally clocked deterministic capture.
+Each `Network Core` block acts like a minimal network interface. When placed, it assigns itself a unique port (0–65535) and persists it across world saves.
+
+**Operation:**
+
+- **Transmit (T):** The face opposite the block's orientation samples incoming redstone power as nibbles (0–15)
+- **Receive (R):** The oriented face emits outgoing frames as redstone power levels
+- **Clock (C):** Any of the four remaining orthogonal faces; when powered, enables symbol processing (allows deterministic external clocking)
+- Ticks every 2 game ticks when clock is active; idle line = 0
 
 ## Implemented Frame Types
 
-- TYPE=0 Data
-- TYPE=1 Control (NOP, RESET, MODEQ, SETPORT, STATSCLR)
+- TYPE=0 Data (with application-defined CODE field)
+- TYPE=1 Data Control (NOP, PORT_UNREACHABLE, MALFORMED_FRAME, BLOCK_BUSY, ECHO_REQUEST, ECHO_REPLY, MODEQ, RESET, SETPORT)
 - TYPE=2 Status (8‑nibble payload emitted on MODEQ)
-- TYPE=3 IPv4 (bridged via UDP)
+- TYPE=3 IPv4 (encapsulates Data/DataControl/Status frames, bridged via UDP)
+- TYPE=4 IPv4 Control (NETWORK_UNREACHABLE, HOST_UNREACHABLE, PORT_UNREACHABLE, ECHO_REQUEST, ECHO_REPLY, PARAMETER_PROBLEM, MODEQ, TARGET_BUSY)
 
 ## Current Features
 
 - Fixed nibble wire protocol (SOF=15, EOF=0, idle=0)
 - Data, Control, Status, IPv4 frame parsing & emission
 - Port allocation & persistence (0–65535 per world)
-- Counters: txFramesParsed, txFramesDropped, rxFramesEmitted, txFramingErrors, rxOverflowDrops (via `/networkcore stats` & status frame flags)
+- Counters: txFramesParsed, rxFramesEmitted, txFramingErrors, rxOverflowDrops (via `/networkcore stats` & status frame flags)
 - IPv4 frame mapping (TYPE=3) including IP + UDP + in‑game addressing
 - Commands for low-level testing & inspection
 - Datapack with scripted frames (`networkcore_test/`)
@@ -37,23 +45,16 @@ Pattern (Crafting Table 3×3):
 
 Produces: 1× Network Core
 
-## Protocol Quick Reference
+## Protocol
 
-See [`NETWORK_CORE_PROTOCOL.md`](NETWORK_CORE_PROTOCOL.md) for full detail.
+All communication uses nibble-based framing (4-bit values 0–15) transmitted via redstone power levels. See [`NETWORK_CORE_PROTOCOL.md`](NETWORK_CORE_PROTOCOL.md) for complete frame specifications.
 
-Highlights:
+**Quick Reference:**
 
-- Max payload: 255 nibbles
-- Data header: 15 nibbles (TYPE + 14) + LEN + payload + EOF
-- IPv4 header: 39 nibbles (TYPE + 38) + LEN + payload + EOF
-- Status frame (TYPE=2) payload:
-  - [0]=0xA signature
-  - [1-2]=world (hi, lo)
-  - [3-4]=port (hi, lo)
-  - [5]=RX queue depth (0–13 cap)
-  - [6]=TX queue depth (currently always 0)
-  - [7]=error flags (bit0 RX_OVERFLOW, bit1 TX_FRAMING_ERR)
-- Idle line = 0s; resync waits for SOF=15
+- Frame structure: SOF(15) + TYPE + CODE + LEN_HI + LEN_LO + ARGS + EOF(0)
+- Max payload: 247 nibbles for Data frames, 255 for others
+- Idle/resync: continuous 0 nibbles until SOF=15
+- All frame types and control codes documented in protocol spec
 
 ## Persistence
 
@@ -65,13 +66,13 @@ On load the saved port is reconciled via `DataRouter`; invalid / missing values 
 
 ## Commands
 
-Root `/networkcore` (alias `/nc`), operator required:
+Root `/networkcore` (or `/nc` shorthand), operator required:
 
-- `sendtest <0-15>` inject a nibble into nearest core
-- `udpaddress` show current UDP endpoint
-- `listports` list allocated ports with positions
-- `stats` show counters, queue depth, error flags
-- `help` summary
+- `sendtest <0-15>` — inject a nibble into nearest core's TX parser
+- `udpaddress` — show current UDP bind address for IPv4 routing
+- `listports` — list all allocated ports with block positions and worlds
+- `stats` — show counters, queue depth, and error flags for nearest core
+- `help` — command summary
 
 ## Datapack Testing
 

@@ -27,15 +27,8 @@ public class NetworkCoreEntity extends BlockEntity {
     return port;
   }
 
-  public int getWorldId() {
-    return DataRouter.getWorldId((ServerWorld) this.world);
-  }
-
   public void setPort(int port) {
-    if (!(this.world instanceof ServerWorld serverWorld)) {
-      return;
-    }
-    int assigned = DataRouter.requestPort(serverWorld, pos, port);
+    int assigned = DataRouter.requestPort(pos, port);
     NetworkCore.LOGGER.debug("Assigned port {} to Network Core at {}", assigned, pos);
     if (this.port != assigned) {
       this.port = assigned;
@@ -58,31 +51,6 @@ public class NetworkCoreEntity extends BlockEntity {
     if (port >= 0) {
       view.putInt(PORT_KEY, port);
     }
-  }
-
-  // Called after world sets this block entity up (Fabric provides ticking/level load hooks).
-  public void handleLoad() {
-    if (this.world instanceof ServerWorld serverWorld) {
-      if (port >= 0) {
-        int assigned = DataRouter.registerExisting(serverWorld, pos, port);
-        if (assigned != port) {
-          port = assigned; // adjust to resolved port
-          markDirty();
-        }
-      } else {
-        int assigned = DataRouter.requestPort(serverWorld, pos, 0);
-        port = assigned;
-        markDirty();
-      }
-    }
-  }
-
-  @Override
-  public void markRemoved() {
-    if (this.world instanceof ServerWorld serverWorld) {
-      DataRouter.release(serverWorld, pos);
-    }
-    super.markRemoved();
   }
 
   public static void tick(World world, BlockPos pos, BlockState state, NetworkCoreEntity be) {
@@ -114,7 +82,7 @@ public class NetworkCoreEntity extends BlockEntity {
     NetworkCoreBlock.setReceivePowering(serverWorld, pos, state, receivePower);
   }
 
-  public void sendFrame(Frame frame) {
-    runtime.sendFrame(frame);
+  public boolean sendFrame(Frame frame) {
+    return runtime.sendFrame(frame);
   }
 }

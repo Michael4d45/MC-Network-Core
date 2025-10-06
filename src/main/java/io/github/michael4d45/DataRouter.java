@@ -5,18 +5,14 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 
 import net.minecraft.nbt.NbtCompound;
 import net.minecraft.nbt.NbtIo;
 import net.minecraft.nbt.NbtSizeTracker;
-import net.minecraft.registry.RegistryKey;
-import net.minecraft.registry.RegistryKeys;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.world.ServerWorld;
-import net.minecraft.util.Identifier;
 import net.minecraft.util.WorldSavePath;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.World;
@@ -28,12 +24,9 @@ public final class DataRouter {
   private static final int MAX_PORT = 65535;
 
   public static MinecraftServer server;
-  private static final Map<Identifier, Integer> worldIds = new ConcurrentHashMap<>();
-  private static int nextWorldId = 0;
 
-  // Per-world port allocation state
-  private static final Map<RegistryKey<World>, NetworkCorePortState> allocations =
-      new ConcurrentHashMap<>();
+  // Global port allocation state
+  private static NetworkCorePortState allocation = new NetworkCorePortState();
 
   private DataRouter() {
     // Utility class: prevent instantiation
@@ -43,143 +36,143 @@ public final class DataRouter {
     ServerLifecycleEvents.SERVER_STARTED.register(
         mcServer -> {
           DataRouter.server = mcServer;
-          loadWorldIds();
-          for (ServerWorld world : mcServer.getWorlds()) {
-            Identifier id = world.getRegistryKey().getValue();
-            worldIds.computeIfAbsent(id, k -> nextWorldId++);
-            NetworkCore.LOGGER.info("Assigned world ID {} to world {}", worldIds.get(id), id);
-            DataRouter.loadState(world);
-          }
+          loadState();
         });
     ServerLifecycleEvents.SERVER_STOPPING.register(
         mcServer -> {
-          saveWorldIds();
-          for (ServerWorld world : mcServer.getWorlds()) {
-            NetworkCore.LOGGER.info(
-                "Requesting port save for world {}", world.getRegistryKey().getValue());
-            DataRouter.saveState(world);
-          }
+          saveState();
           // Clear static state to avoid leakage across integrated server sessions
-          allocations.clear();
-          worldIds.clear();
-          nextWorldId = 0;
+          allocation = new NetworkCorePortState();
           DataRouter.server = null;
         });
   }
 
-  private static ServerWorld getWorldById(int id) {
-    for (var entry : worldIds.entrySet()) {
-      if (entry.getValue() == id) {
-        RegistryKey<World> key = RegistryKey.of(RegistryKeys.WORLD, entry.getKey());
-        return server.getWorld(key);
-      }
-    }
-    return null;
-  }
-
-  public static int getWorldId(ServerWorld world) {
-    return worldIds.getOrDefault(world.getRegistryKey().getValue(), -1);
-  }
-
-  public static void sendFrame(RoutedFrame frame) {
-    ServerWorld world = getWorldById(frame.getDstWorld());
-    if (world == null) {
-      NetworkCore.LOGGER.warn("Cannot send frame, invalid world ID: " + frame.getDstWorld());
+  public static void sendLocalDataFrame(NetworkCoreEntity source, DataFrame frame) {
+    if (source == null || frame == null) {
       return;
     }
-    NetworkCoreEntity be = getBlockEntityByPort(world, frame.getDstPort());
-    if (be != null) {
-      be.sendFrame((Frame) frame);
-    } else {
-      NetworkCore.LOGGER.warn(
-          "Cannot send frame, no block found at world ID {} port {}",
-          frame.getDstWorld(),
-          frame.getDstPort());
-      NetworkCore.LOGGER.debug("Available worlds and ports:");
-      for (var entry : worldIds.entrySet()) {
-        NetworkCore.LOGGER.debug(" - World ID {}: {}", entry.getValue(), entry.getKey());
-        for (var beEntry : allocations.entrySet()) {
-          if (beEntry.getKey().getValue().equals(entry.getKey())) {
-            NetworkCorePortState state = beEntry.getValue();
-            for (int port = 0; port <= 65535; port++) {
-              if (state.byPort[port] != null) {
-                NetworkCore.LOGGER.debug("   - Port {}: {}", port, state.byPort[port]);
-              }
+    World world = source.getWorld();
+    if (!(world instanceof ServerWorld)) {
+      return;
+    }
+    NetworkCoreEntity destination = getBlockEntityByPort(frame.getDstPort());
+    if (destination != null && !destination.isRemoved()) {
+      if (!destination.sendFrame(frame)) {
+        // Queue full, send BLOCK_BUSY back to source
+        emitBlockBusy(source, frame.getSrcPort());
+      }
+      return;
+    }
+    NetworkCore.LOGGER.warn("No NetworkCore listening on port {}", frame.getDstPort());
+    emitPortUnreachable(source, frame.getDstPort());
+  }
+
+  public static void deliverIPv4Frame(IPv4Frame frame) {
+    if (frame == null) {
+      return;
+    }
+    if (frame.hasEncapsulatedFrame()) {
+      Frame encapsulated = frame.getEncapsulatedFrame();
+      switch (encapsulated) {
+        case DataFrame dataFrame -> {
+          NetworkCoreEntity destination = getBlockEntityByPort(dataFrame.getDstPort());
+          if (destination != null && !destination.isRemoved()) {
+            if (!destination.sendFrame(dataFrame)) {
+              // Queue full, send TARGET_BUSY back
+              emitIpv4TargetBusy(frame, dataFrame.getDstPort());
             }
-            break; // Assuming one state per world
+          } else {
+            NetworkCore.LOGGER.warn(
+                "No NetworkCore listening on port {} for IPv4 delivery", dataFrame.getDstPort());
+            emitIpv4PortUnreachable(frame, dataFrame.getDstPort());
           }
         }
+        case DataControlFrame controlFrame -> {
+          int targetPort = frame.getDstUdpPort();
+          NetworkCoreEntity destination = getBlockEntityByPort(targetPort);
+          if (destination != null && !destination.isRemoved()) {
+            if (!destination.sendFrame(controlFrame)) {
+              // Queue full, send TARGET_BUSY back
+              emitIpv4TargetBusy(frame, targetPort);
+            }
+          } else {
+            NetworkCore.LOGGER.warn(
+                "No NetworkCore listening on port {} for IPv4 control frame (code={})",
+                targetPort,
+                controlFrame.getCode());
+            emitIpv4PortUnreachable(frame, targetPort);
+          }
+        }
+        case StatusFrame statusFrame -> // Status frame received over IPv4 - log it
+            NetworkCore.LOGGER.info("Received status over IPv4: {}", statusFrame);
+        default ->
+            NetworkCore.LOGGER.warn(
+                "IPv4 frame encapsulates unsupported frame type: {}", encapsulated);
       }
     }
   }
 
-  public static int registerExisting(ServerWorld world, BlockPos pos, int desiredPort) {
-    return getAllocation(world).claim(pos, desiredPort);
+  public static int registerExisting(BlockPos pos, int desiredPort) {
+    return allocation.claim(pos, desiredPort);
   }
 
-  public static int requestPort(ServerWorld world, BlockPos pos, int desiredPort) {
-    return getAllocation(world).reassign(pos, desiredPort);
+  public static int requestPort(BlockPos pos, int desiredPort) {
+    return allocation.reassign(pos, desiredPort);
   }
 
-  public static NetworkCoreEntity getBlockEntityByPort(ServerWorld world, int port) {
+  public static NetworkCoreEntity getBlockEntityByPort(int port) {
     if (port < MIN_PORT || port > MAX_PORT) {
       return null;
     }
-    NetworkCorePortState state = getAllocation(world);
-    BlockPos pos = state.getPosByPort(port);
+    BlockPos pos = allocation.getPosByPort(port);
     if (pos == null) {
       return null;
     }
-    if (world.getBlockEntity(pos) instanceof NetworkCoreEntity nbe) {
-      if (nbe.getPort() == port) {
-        return nbe;
+    for (ServerWorld world : server.getWorlds()) {
+      if (world.getBlockEntity(pos) instanceof NetworkCoreEntity nbe) {
+        if (nbe.getPort() == port) {
+          return nbe;
+        }
       }
     }
     // Block entity missing or port changed; clean up allocation
-    state.release(pos);
+    allocation.release(pos);
     return null;
   }
 
-  public static void release(ServerWorld world, BlockPos pos) {
-    getAllocation(world).release(pos);
+  public static void release(BlockPos pos) {
+    allocation.release(pos);
   }
 
   public static Map<BlockPos, Integer> getAllocatedPorts(ServerWorld world) {
-    return new HashMap<>(getAllocation(world).byPos);
+    Map<BlockPos, Integer> result = new HashMap<>();
+    for (var entry : allocation.byPos.entrySet()) {
+      BlockPos pos = entry.getKey();
+      int port = entry.getValue();
+      if (world.getBlockEntity(pos) instanceof NetworkCoreEntity) {
+        result.put(pos, port);
+      }
+    }
+    return result;
   }
 
-  private static NetworkCorePortState getAllocation(ServerWorld world) {
-    RegistryKey<World> key = world.getRegistryKey();
-    return allocations.computeIfAbsent(key, k -> new NetworkCorePortState());
-  }
-
-  public static void saveState(ServerWorld world) {
-    NetworkCorePortState state = allocations.get(world.getRegistryKey());
-    if (state != null) {
-      // Log all blocks being saved
-      for (var entry : state.byPos.entrySet()) {
-        BlockPos pos = entry.getKey();
-        int port = entry.getValue();
-        NetworkCore.LOGGER.info(
-            "Saving block at {} with port {} for world {}",
-            pos,
-            port,
-            world.getRegistryKey().getValue());
-      }
-      Path path = getStateFile(world);
-      try {
-        Files.createDirectories(path.getParent());
-        NbtIo.writeCompressed(state.writeNbt(), path);
-      } catch (IOException e) {
-        NetworkCore.LOGGER.error(
-            "Failed to save network core ports for world {}", world.getRegistryKey().getValue(), e);
-      }
+  public static void saveState() {
+    int count = allocation.byPos.size();
+    if (count > 0) {
+      NetworkCore.LOGGER.info("Saving {} network core port allocation(s)", count);
+    }
+    Path path = getStateFile();
+    try {
+      Files.createDirectories(path.getParent());
+      NbtIo.writeCompressed(allocation.writeNbt(), path);
+    } catch (IOException e) {
+      NetworkCore.LOGGER.error("Failed to save network core ports", e);
     }
   }
 
-  public static void loadState(ServerWorld world) {
-    Path path = getStateFile(world);
-    Path legacyPath = getLegacyStateFile(world);
+  public static void loadState() {
+    Path path = getStateFile();
+    Path legacyPath = getLegacyStateFile();
     boolean migratedFromLegacy = false;
     if (!Files.exists(path) && Files.exists(legacyPath)) {
       path = legacyPath;
@@ -188,20 +181,13 @@ public final class DataRouter {
     if (Files.exists(path)) {
       try {
         NbtCompound nbt = NbtIo.readCompressed(path, NbtSizeTracker.ofUnlimitedBytes());
-        NetworkCorePortState state = NetworkCorePortState.fromNbt(nbt);
-        allocations.put(world.getRegistryKey(), state);
-        // Log all blocks that were loaded
-        for (var entry : state.byPos.entrySet()) {
-          BlockPos pos = entry.getKey();
-          int port = entry.getValue();
-          NetworkCore.LOGGER.info(
-              "Loaded block at {} with port {} for world {}",
-              pos,
-              port,
-              world.getRegistryKey().getValue());
+        allocation = NetworkCorePortState.fromNbt(nbt);
+        int count = allocation.byPos.size();
+        if (count > 0) {
+          NetworkCore.LOGGER.info("Loaded {} network core port allocation(s)", count);
         }
         if (migratedFromLegacy) {
-          saveState(world);
+          saveState();
           try {
             Files.deleteIfExists(legacyPath);
           } catch (IOException e) {
@@ -209,59 +195,71 @@ public final class DataRouter {
           }
         }
       } catch (IOException e) {
-        NetworkCore.LOGGER.error(
-            "Failed to load network core ports for world {}", world.getRegistryKey().getValue(), e);
+        NetworkCore.LOGGER.error("Failed to load network core ports", e);
       }
     }
   }
 
-  private static Path getStateFile(ServerWorld world) {
-    Identifier id = world.getRegistryKey().getValue();
-    return world
-        .getServer()
-        .getSavePath(WorldSavePath.ROOT)
-        .resolve("data")
-        .resolve("network_core_ports")
-        .resolve(id.getNamespace())
-        .resolve(id.getPath() + ".nbt");
+  private static Path getStateFile() {
+    return server.getSavePath(WorldSavePath.ROOT).resolve("data").resolve("network_core_ports.nbt");
   }
 
-  private static Path getLegacyStateFile(ServerWorld world) {
-    return world
-        .getServer()
-        .getSavePath(WorldSavePath.ROOT)
-        .resolve("data")
-        .resolve("network_core_ports.nbt");
+  private static Path getLegacyStateFile() {
+    // Legacy path used in earlier versions (no longer used, kept for migration)
+    return server.getSavePath(WorldSavePath.ROOT).resolve("network_core_ports.dat");
   }
 
-  private static void loadWorldIds() {
-    Path path =
-        server.getSavePath(WorldSavePath.ROOT).resolve("data").resolve("network_core_worlds.nbt");
-    if (Files.exists(path)) {
-      try {
-        NbtCompound nbt = NbtIo.readCompressed(path, NbtSizeTracker.ofUnlimitedBytes());
-        for (String key : nbt.getKeys()) {
-          nbt.getInt(key).ifPresent(id -> worldIds.put(Identifier.of(key), id));
-        }
-        nextWorldId = worldIds.values().stream().mapToInt(i -> i).max().orElse(-1) + 1;
-      } catch (IOException e) {
-        NetworkCore.LOGGER.error("Failed to load world ids", e);
-      }
+  private static void emitPortUnreachable(NetworkCoreEntity source, int port) {
+    if (source == null) {
+      return;
     }
+    int safePort = Math.max(0, Math.min(0xFFFF, port));
+    int[] args = {
+      (safePort >> 12) & 0xF, (safePort >> 8) & 0xF, (safePort >> 4) & 0xF, safePort & 0xF
+    };
+    source.sendFrame(new DataControlFrame(0x1, args));
   }
 
-  private static void saveWorldIds() {
-    Path path =
-        server.getSavePath(WorldSavePath.ROOT).resolve("data").resolve("network_core_worlds.nbt");
-    try {
-      Files.createDirectories(path.getParent());
-      NbtCompound nbt = new NbtCompound();
-      for (var entry : worldIds.entrySet()) {
-        nbt.putInt(entry.getKey().toString(), entry.getValue());
-      }
-      NbtIo.writeCompressed(nbt, path);
-    } catch (IOException e) {
-      NetworkCore.LOGGER.error("Failed to save world ids", e);
+  private static void emitBlockBusy(NetworkCoreEntity source, int port) {
+    if (source == null) {
+      return;
     }
+    int safePort = Math.max(0, Math.min(0xFFFF, port));
+    int[] args = {
+      (safePort >> 12) & 0xF, (safePort >> 8) & 0xF, (safePort >> 4) & 0xF, safePort & 0xF
+    };
+    source.sendFrame(new DataControlFrame(0x3, args));
+  }
+
+  private static void emitIpv4PortUnreachable(IPv4Frame frame, int port) {
+    if (port < 0) {
+      return;
+    }
+    int safePort = Math.max(0, Math.min(0xFFFF, port));
+    IPv4Router.sendControlFrameTo(
+        frame.getSrcIp(),
+        frame.getSrcUdpPort(),
+        frame.getDstIp(),
+        frame.getDstUdpPort(),
+        0x2,
+        encodePort(safePort));
+  }
+
+  private static void emitIpv4TargetBusy(IPv4Frame frame, int port) {
+    if (port < 0) {
+      return;
+    }
+    int safePort = Math.max(0, Math.min(0xFFFF, port));
+    IPv4Router.sendControlFrameTo(
+        frame.getSrcIp(),
+        frame.getSrcUdpPort(),
+        frame.getDstIp(),
+        frame.getDstUdpPort(),
+        0x7,
+        encodePort(safePort));
+  }
+
+  private static int[] encodePort(int port) {
+    return new int[] {(port >> 12) & 0xF, (port >> 8) & 0xF, (port >> 4) & 0xF, port & 0xF};
   }
 }

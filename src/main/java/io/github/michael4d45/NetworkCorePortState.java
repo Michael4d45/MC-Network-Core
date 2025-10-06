@@ -7,7 +7,12 @@ import net.minecraft.nbt.NbtCompound;
 import net.minecraft.nbt.NbtList;
 import net.minecraft.util.math.BlockPos;
 
-/** Persistent state for network core port allocations per world. */
+/**
+ * Persistent state for network core port allocations. Ports are world-agnostic (apply to entire
+ * Minecraft instance, not per-world). BlockPos coordinates are unique per world;
+ * getBlockEntity(pos) is world-scoped, preventing collisions between identical positions in
+ * Overworld/Nether/End.
+ */
 public class NetworkCorePortState {
   final BlockPos[] byPort = new BlockPos[65536]; // index 0..65535
   final Map<BlockPos, Integer> byPos = new HashMap<>();
@@ -20,7 +25,10 @@ public class NetworkCorePortState {
     for (int i = 0; i < list.size(); i++) {
       NbtCompound c = list.getCompound(i).orElse(null);
       if (c != null) {
-        int port = c.getByte("Port").orElse((byte) 0) & 0xFF;
+        int port = c.getInt("Port").orElse(-1);
+        if (port < 0) {
+          port = c.getByte("Port").map(b -> b & 0xFF).orElse(-1);
+        }
         if (port >= 0 && port <= 65535) {
           BlockPos pos =
               new BlockPos(
@@ -39,7 +47,7 @@ public class NetworkCorePortState {
       BlockPos pos = byPort[i];
       if (pos != null) {
         NbtCompound c = new NbtCompound();
-        c.putByte("Port", (byte) i);
+        c.putInt("Port", i);
         c.putInt("X", pos.getX());
         c.putInt("Y", pos.getY());
         c.putInt("Z", pos.getZ());
