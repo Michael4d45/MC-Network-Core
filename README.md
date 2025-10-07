@@ -36,6 +36,7 @@ You can craft the Network Core block with a shaped recipe:
 Pattern (Crafting Table 3×3):
 
 | <img src="https://minecraft.wiki/images/Invicon_Iron_Ingot.png" alt="Iron Ingot" width="32" /> | <img src="https://minecraft.wiki/images/Invicon_Redstone.png" alt="Redstone Dust" width="32" /> | <img src="https://minecraft.wiki/images/Invicon_Iron_Ingot.png" alt="Iron Ingot" width="32" /> |
+|------------|---------------|------------|
 | <img src="https://minecraft.wiki/images/Invicon_Redstone.png" alt="Redstone Dust" width="32" /> | <img src="https://minecraft.wiki/images/Invicon_Redstone_Comparator.png" alt="Comparator" width="32" /> | <img src="https://minecraft.wiki/images/Invicon_Redstone.png" alt="Redstone Dust" width="32" /> |
 | <img src="https://minecraft.wiki/images/Invicon_Iron_Ingot.png" alt="Iron Ingot" width="32" /> | <img src="https://minecraft.wiki/images/Invicon_Redstone.png" alt="Redstone Dust" width="32" /> | <img src="https://minecraft.wiki/images/Invicon_Iron_Ingot.png" alt="Iron Ingot" width="32" /> |
 
